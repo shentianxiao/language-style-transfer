@@ -242,7 +242,7 @@ if __name__ == '__main__':
 
                     # do not back-propagate from the discriminator
                     # when it is too poor
-                    if loss_d0 < 0.6 and loss_d1 < 0.6:
+                    if loss_d0 < 1.2 and loss_d1 < 1.2:
                         optimizer = model.optimizer_all
                     else:
                         optimizer = model.optimizer_ae

@@ -107,7 +107,7 @@ def discriminator(x_real, x_fake, ones, zeros, dropout, scope):
     loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
         targets=zeros, logits=d_fake))
 
-    return (loss_real + loss_fake) / 2
+    return loss_real + loss_fake
 
 def combine(x, y, scope, reuse=False):
     dim_x = x.get_shape().as_list()[-1]
