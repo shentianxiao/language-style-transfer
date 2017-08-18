@@ -32,7 +32,7 @@ def load_arguments():
             default=64)
     argparser.add_argument('--max_epochs',
             type=int,
-            default=20)
+            default=50)
     argparser.add_argument('--steps_per_checkpoint',
             type=int,
             default=1000)
@@ -51,13 +51,13 @@ def load_arguments():
             default=1)
     argparser.add_argument('--dim_y',
             type=int,
-            default=500)
+            default=200)
     argparser.add_argument('--dim_z',
             type=int,
-            default=1000)
+            default=500)
     argparser.add_argument('--dim_emb',
             type=int,
-            default=200)
+            default=100)
     argparser.add_argument('--learning_rate',
             type=float,
             default=0.0001)
@@ -67,7 +67,13 @@ def load_arguments():
     argparser.add_argument('--rho',                     # loss_g - rho * loss_d
             type=float,
             default=1)
-    argparser.add_argument('--gamma',                   # softmax(logit / gamma)
+    argparser.add_argument('--gamma_init',              # softmax(logit / gamma)
+            type=float,
+            default=1)
+    argparser.add_argument('--gamma_decay',
+            type=float,
+            default=0.5)
+    argparser.add_argument('--gamma_min',
             type=float,
             default=0.001)
 

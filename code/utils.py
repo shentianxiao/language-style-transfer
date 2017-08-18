@@ -3,10 +3,11 @@ def strip_eos(sents):
     return [sent[:sent.index('<eos>')] if '<eos>' in sent else sent
         for sent in sents]
 
-def feed_dictionary(model, batch, rho, dropout=1, learning_rate=None):
+def feed_dictionary(model, batch, rho, gamma, dropout=1, learning_rate=None):
     feed_dict = {model.dropout: dropout,
                  model.learning_rate: learning_rate,
                  model.rho: rho,
+                 model.gamma: gamma,
                  model.batch_len: batch['len'],
                  model.batch_size: batch['size'],
                  model.enc_inputs: batch['enc_inputs'],

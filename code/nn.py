@@ -32,6 +32,22 @@ def feed_forward(inp, scope):
 
     return tf.reshape(logits, [-1])
 
+def gumbel_softmax(logits, gamma, eps=1e-20):
+    U = tf.random_uniform(tf.shape(logits))
+    G = -tf.log(-tf.log(U + eps) + eps)
+    return tf.nn.softmax((logits + G) / gamma)
+
+def softsample_word(dropout, proj_W, proj_b, embedding, gamma):
+
+    def loop_func(output):
+        output = tf.nn.dropout(output, dropout)
+        logits = tf.matmul(output, proj_W) + proj_b
+        prob = gumbel_softmax(logits, gamma)
+        inp = tf.matmul(prob, embedding)
+        return inp, logits
+
+    return loop_func
+
 def softmax_word(dropout, proj_W, proj_b, embedding, gamma):
 
     def loop_func(output):
