@@ -14,6 +14,9 @@ def load_arguments():
     argparser.add_argument('--test',
             type=str,
             default='')
+    argparser.add_argument('--online_testing',
+            type=bool,
+            default=False)
     argparser.add_argument('--output',
             type=str,
             default='')
@@ -32,7 +35,7 @@ def load_arguments():
             default=64)
     argparser.add_argument('--max_epochs',
             type=int,
-            default=50)
+            default=20)
     argparser.add_argument('--steps_per_checkpoint',
             type=int,
             default=1000)
@@ -75,7 +78,7 @@ def load_arguments():
             default=0.5)
     argparser.add_argument('--gamma_min',
             type=float,
-            default=0.001)
+            default=0.0001)
 
     args = argparser.parse_args()
 

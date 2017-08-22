@@ -280,3 +280,20 @@ if __name__ == '__main__':
             test_losses = transfer(model, sess, args, vocab,
                 test0, test1, args.output)
             test_losses.output('test')
+
+        if args.online_testing:
+            while True:
+                sys.stdout.write('> ')
+                sys.stdout.flush()
+                inp = sys.stdin.readline().rstrip()
+                if inp == 'quit' or inp == 'exit':
+                    break
+                inp = inp.split()
+                y = int(inp[0])
+                sent = inp[1:]
+
+                batch = get_batch([sent], [y], vocab.word2id)
+                ori, tsf, _, _, _, _, _ = rewrite(model, sess,
+                    args, vocab, batch)
+                print 'original:', ' '.join(w for w in ori[0])
+                print 'transfer:', ' '.join(w for w in tsf[0])
