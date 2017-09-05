@@ -13,10 +13,12 @@ from options import load_arguments
 from file_io import load_sent, write_sent
 from utils import *
 from nn import *
+#from beam_search import Decoder
+from greedy_decoding import Decoder
 
 class Model(object):
 
-    def __init__(self, sess, args, vocab):
+    def __init__(self, args, vocab):
         dim_y = args.dim_y
         dim_z = args.dim_z
         dim_h = dim_y + dim_z
@@ -73,17 +75,17 @@ class Model(object):
         #_, z = tf.nn.dynamic_rnn(cell_e, enc_inputs,
         #    dtype=tf.float32, scope='encoder_z')
 
-        h_ori = tf.concat(1, [y_ori, z])
-        h_tsf = tf.concat(1, [y_tsf, z])
+        self.h_ori = tf.concat(1, [y_ori, z])
+        self.h_tsf = tf.concat(1, [y_tsf, z])
         #h_ori = combine(z, y_ori, scope='generator')
         #h_tsf = combine(z, y_tsf, scope='generator', reuse=True)
 
         cell_g = create_cell(dim_h, n_layers, self.dropout)
         g_outputs, _ = tf.nn.dynamic_rnn(cell_g, dec_inputs,
-            initial_state=h_ori, scope='generator')
+            initial_state=self.h_ori, scope='generator')
 
         # attach h0 in the front
-        teach_h = tf.concat(1, [tf.expand_dims(h_ori, 1), g_outputs])
+        teach_h = tf.concat(1, [tf.expand_dims(self.h_ori, 1), g_outputs])
 
         g_outputs = tf.nn.dropout(g_outputs, self.dropout)
         g_outputs = tf.reshape(g_outputs, [-1, dim_h])
@@ -100,14 +102,14 @@ class Model(object):
             self.gamma)
         hard_func = argmax_word(self.dropout, proj_W, proj_b, embedding)
 
-        soft_h_ori, soft_logits_ori = rnn_decode(h_ori, go, max_len,
+        soft_h_ori, soft_logits_ori = rnn_decode(self.h_ori, go, max_len,
             cell_g, soft_func, scope='generator')
-        soft_h_tsf, soft_logits_tsf = rnn_decode(h_tsf, go, max_len,
+        soft_h_tsf, soft_logits_tsf = rnn_decode(self.h_tsf, go, max_len,
             cell_g, soft_func, scope='generator')
 
-        hard_h_ori, self.hard_logits_ori = rnn_decode(h_ori, go, max_len,
+        hard_h_ori, self.hard_logits_ori = rnn_decode(self.h_ori, go, max_len,
             cell_g, hard_func, scope='generator')
-        hard_h_tsf, self.hard_logits_tsf = rnn_decode(h_tsf, go, max_len,
+        hard_h_tsf, self.hard_logits_tsf = rnn_decode(self.h_tsf, go, max_len,
             cell_g, hard_func, scope='generator')
 
         #####   discriminator   #####
@@ -140,34 +142,21 @@ class Model(object):
 
         self.saver = tf.train.Saver()
 
-def rewrite(model, sess, args, vocab, batch):
-    logits_ori, logits_tsf, loss, loss_g, loss_d, loss_d0, loss_d1 = sess.run(
-        [model.hard_logits_ori, model.hard_logits_tsf,
-         model.loss, model.loss_g, model.loss_d, model.loss_d0, model.loss_d1],
-         feed_dict=feed_dictionary(model, batch, args.rho, args.gamma_min))
-
-    ori = np.argmax(logits_ori, axis=2).tolist()
-    ori = [[vocab.id2word[i] for i in sent] for sent in ori]
-    ori = strip_eos(ori)
-
-    tsf = np.argmax(logits_tsf, axis=2).tolist()
-    tsf = [[vocab.id2word[i] for i in sent] for sent in tsf]
-    tsf = strip_eos(tsf)
-
-    return ori, tsf, loss, loss_g, loss_d, loss_d0, loss_d1
-
-def transfer(model, sess, args, vocab, data0, data1, out_path):
+def transfer(model, decoder, sess, args, vocab, data0, data1, out_path):
     batches, order0, order1 = get_batches(data0, data1,
         vocab.word2id, args.batch_size)
 
     data0_tsf, data1_tsf = [], []
     losses = Losses(len(batches))
     for batch in batches:
-        ori, tsf, loss, loss_g, loss_d, loss_d0, loss_d1 = rewrite(
-            model, sess, args, vocab, batch)
+        ori, tsf = decoder.rewrite(batch)
         half = batch['size'] / 2
         data0_tsf += tsf[:half]
         data1_tsf += tsf[half:]
+
+        loss, loss_g, loss_d, loss_d0, loss_d1 = sess.run([model.loss,
+            model.loss_g, model.loss_d, model.loss_d0, model.loss_d1],
+            feed_dict=feed_dictionary(model, batch, args.rho, args.gamma_min))
         losses.add(loss, loss_g, loss_d, loss_d0, loss_d1)
 
     n0, n1 = len(data0), len(data1)
@@ -181,7 +170,7 @@ def transfer(model, sess, args, vocab, data0, data1, out_path):
     return losses
 
 def create_model(sess, args, vocab):
-    model = Model(sess, args, vocab)
+    model = Model(args, vocab)
     if args.load_model:
         print 'Loading model from', args.model
         model.saver.restore(sess, args.model)
@@ -218,6 +207,7 @@ if __name__ == '__main__':
     #config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
+        decoder = Decoder(sess, args, vocab, model)
 
         if args.train:
             batches, _, _ = get_batches(train0, train1, vocab.word2id,
@@ -266,7 +256,7 @@ if __name__ == '__main__':
                         losses.clear()
 
                 if args.dev:
-                    dev_losses = transfer(model, sess, args, vocab,
+                    dev_losses = transfer(model, decoder, sess, args, vocab,
                         dev0, dev1, args.output + '.epoch%d' % epoch)
                     dev_losses.output('dev')
                     if dev_losses.loss < best_dev:
@@ -277,7 +267,7 @@ if __name__ == '__main__':
                 gamma = max(args.gamma_min, gamma * args.gamma_decay)
 
         if args.test:
-            test_losses = transfer(model, sess, args, vocab,
+            test_losses = transfer(model, decoder, sess, args, vocab,
                 test0, test1, args.output)
             test_losses.output('test')
 
@@ -293,7 +283,6 @@ if __name__ == '__main__':
                 sent = inp[1:]
 
                 batch = get_batch([sent], [y], vocab.word2id)
-                ori, tsf, _, _, _, _, _ = rewrite(model, sess,
-                    args, vocab, batch)
+                ori, tsf = decoder.rewrite(batch)
                 print 'original:', ' '.join(w for w in ori[0])
                 print 'transfer:', ' '.join(w for w in tsf[0])

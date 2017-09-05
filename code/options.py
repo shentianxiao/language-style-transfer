@@ -46,6 +46,9 @@ def load_arguments():
             type=int,
             default=-1)
 
+    argparser.add_argument('--beam',
+            type=int,
+            default=12)
     argparser.add_argument('--dropout_keep_prob',
             type=float,
             default=0.5)
