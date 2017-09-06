@@ -48,7 +48,7 @@ def load_arguments():
 
     argparser.add_argument('--beam',
             type=int,
-            default=12)
+            default=8)
     argparser.add_argument('--dropout_keep_prob',
             type=float,
             default=0.5)
@@ -82,6 +82,12 @@ def load_arguments():
     argparser.add_argument('--gamma_min',
             type=float,
             default=0.0001)
+    argparser.add_argument('--max_filter_width',
+            type=int,
+            default=4)
+    argparser.add_argument('--n_filters',
+            type=int,
+            default=128)
 
     args = argparser.parse_args()
 

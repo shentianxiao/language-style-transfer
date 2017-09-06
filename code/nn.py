@@ -83,9 +83,7 @@ def rnn_decode(h, inp, length, cell, loop_func, scope):
 
     return tf.concat(1, h_seq), tf.concat(1, logits_seq)
 
-def cnn(inp, dropout, scope, reuse=False,
-    filter_sizes=[1, 2, 3, 4], num_filters=128):
-
+def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):
     dim = inp.get_shape().as_list()[-1]
     inp = tf.expand_dims(inp, -1)
 
@@ -96,27 +94,28 @@ def cnn(inp, dropout, scope, reuse=False,
         outputs = []
         for size in filter_sizes:
             with tf.variable_scope('conv-maxpool-%s' % size):
-                W = tf.get_variable('W', [size, dim, 1, num_filters])
-                b = tf.get_variable('b', [num_filters])
+                W = tf.get_variable('W', [size, dim, 1, n_filters])
+                b = tf.get_variable('b', [n_filters])
                 conv = tf.nn.conv2d(inp, W,
                     strides=[1, 1, 1, 1], padding='VALID')
                 h = leaky_relu(conv + b)
                 pooled = tf.reduce_max(h, reduction_indices=1)   #max pooling over time
-                pooled = tf.reshape(pooled, [-1, num_filters])
+                pooled = tf.reshape(pooled, [-1, n_filters])
                 outputs.append(pooled)
         outputs = tf.concat(1, outputs)
         outputs = tf.nn.dropout(outputs, dropout)
 
         with tf.variable_scope('output'):
-            W = tf.get_variable('W', [num_filters*len(filter_sizes), 1])
+            W = tf.get_variable('W', [n_filters*len(filter_sizes), 1])
             b = tf.get_variable('b', [1])
             logits = tf.reshape(tf.matmul(outputs, W) + b, [-1])
 
     return logits
 
-def discriminator(x_real, x_fake, ones, zeros, dropout, scope):
-    d_real = cnn(x_real, dropout, scope)
-    d_fake = cnn(x_fake, dropout, scope, reuse=True)
+def discriminator(x_real, x_fake, ones, zeros,
+    filter_sizes, n_filters, dropout, scope):
+    d_real = cnn(x_real, filter_sizes, n_filters, dropout, scope)
+    d_fake = cnn(x_fake, filter_sizes, n_filters, dropout, scope, reuse=True)
 
     loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
         targets=ones, logits=d_real))

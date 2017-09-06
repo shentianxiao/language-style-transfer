@@ -25,6 +25,8 @@ class Model(object):
         dim_emb = args.dim_emb
         n_layers = args.n_layers
         max_len = args.max_seq_length
+        filter_sizes = range(1, 1+args.max_filter_width)
+        n_filters = args.n_filters
 
         self.dropout = tf.placeholder(tf.float32,
             name='dropout')
@@ -113,14 +115,19 @@ class Model(object):
             cell_g, hard_func, scope='generator')
 
         #####   discriminator   #####
+        # a batch's first half consists of sentences of one style,
+        # and second half of the other
+
         half = self.batch_size / 2
         zeros, ones = self.labels[:half], self.labels[half:]
         soft_h_tsf = soft_h_tsf[:, :1+self.batch_len, :]
 
         self.loss_d0 = discriminator(teach_h[:half], soft_h_tsf[half:],
-            ones, zeros, self.dropout, scope='discriminator0')
+            ones, zeros, filter_sizes, n_filters, self.dropout,
+            scope='discriminator0')
         self.loss_d1 = discriminator(teach_h[half:], soft_h_tsf[:half],
-            ones, zeros, self.dropout, scope='discriminator1')
+            ones, zeros, filter_sizes, n_filters, self.dropout,
+            scope='discriminator1')
 
         #####   optimizer   #####
         self.loss_d = self.loss_d0 + self.loss_d1
@@ -221,6 +228,7 @@ if __name__ == '__main__':
             learning_rate = args.learning_rate
             rho = args.rho
             gamma = args.gamma_init
+            dropout = args.dropout_keep_prob
 
             for epoch in range(1, 1+args.max_epochs):
                 print '--------------------epoch %d--------------------' % epoch
@@ -229,7 +237,7 @@ if __name__ == '__main__':
 
                 for batch in batches:
                     feed_dict = feed_dictionary(model, batch, rho, gamma,
-                        args.dropout_keep_prob, learning_rate)
+                        dropout, learning_rate)
 
                     loss_d0, _ = sess.run([model.loss_d0, model.optimizer_d0],
                         feed_dict=feed_dict)

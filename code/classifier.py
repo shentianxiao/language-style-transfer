@@ -15,6 +15,8 @@ class Model(object):
 
     def __init__(self, args, vocab):
         dim_emb = args.dim_emb
+        filter_sizes = range(1, 1+args.max_filter_width)
+        n_filters = args.n_filters
 
         self.dropout = tf.placeholder(tf.float32,
             name='dropout')
@@ -27,7 +29,7 @@ class Model(object):
 
         embedding = tf.get_variable('embedding', [vocab.size, dim_emb])
         x = tf.nn.embedding_lookup(embedding, self.x)
-        self.logits = cnn(x, self.dropout, 'cnn')
+        self.logits = cnn(x, filter_sizes, n_filters, self.dropout, 'cnn')
         self.probs = tf.sigmoid(self.logits)
 
         loss = tf.nn.sigmoid_cross_entropy_with_logits(
