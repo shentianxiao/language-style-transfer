@@ -4,7 +4,7 @@ This repo contains the code and data of the following paper:
 <i> "Style Transfer from Non-Parallel Text by Cross-Alignment". Tianxiao Shen, Tao Lei, Regina Barzilay, and Tommi Jaakkola. [arXiv:1705.09655](https://arxiv.org/abs/1705.09655)</i>
 
 The method learns to perform style transfer between two non-parallel corpora. For example, given positive and negative reviews as two corpora, the model can learn to reverse the sentiment of a sentence.
-<img width=800 src="img/example_sentiment.png">
+<img width=1000 src="img/example_sentiment.png">
 
 <br>
 
