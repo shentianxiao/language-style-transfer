@@ -19,6 +19,20 @@ def retrive_var(scopes):
             scope=scope)
     return var
 
+def combine(x, y, scope, reuse=False):
+    dim_x = x.get_shape().as_list()[-1]
+    dim_y = y.get_shape().as_list()[-1]
+
+    with tf.variable_scope(scope) as vs:
+        if reuse:
+            vs.reuse_variables()
+
+        W = tf.get_variable('W', [dim_x+dim_y, dim_x])
+        b = tf.get_variable('b', [dim_x])
+
+    h = tf.matmul(tf.concat(1, [x, y]), W) + b
+    return leaky_relu(h)
+
 def feed_forward(inp, scope):
     dim = inp.get_shape().as_list()[-1]
 
@@ -113,27 +127,23 @@ def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):
     return logits
 
 def discriminator(x_real, x_fake, ones, zeros,
-    filter_sizes, n_filters, dropout, scope):
+    filter_sizes, n_filters, dropout, scope,
+    wgan=False, eta=10):
     d_real = cnn(x_real, filter_sizes, n_filters, dropout, scope)
     d_fake = cnn(x_fake, filter_sizes, n_filters, dropout, scope, reuse=True)
 
-    loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-        targets=ones, logits=d_real))
-    loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-        targets=zeros, logits=d_fake))
+    if wgan:
+        eps = tf.random_uniform([], 0.0, 1.0)
+        mix = eps * x_real + (1-eps) * x_fake
+        d_mix = cnn(mix, filter_sizes, n_filters, dropout, scope, reuse=True)
+        grad = tf.gradients(d_mix, mix)[0]
+        grad_norm = tf.sqrt(tf.reduce_sum(tf.square(grad), axis=[1, 2]))
+        loss = d_fake-d_real + eta*tf.square(grad_norm-1)
+        return tf.reduce_mean(loss)
 
-    return loss_real + loss_fake
-
-def combine(x, y, scope, reuse=False):
-    dim_x = x.get_shape().as_list()[-1]
-    dim_y = y.get_shape().as_list()[-1]
-
-    with tf.variable_scope(scope) as vs:
-        if reuse:
-            vs.reuse_variables()
-
-        W = tf.get_variable('W', [dim_x+dim_y, dim_x])
-        b = tf.get_variable('b', [dim_x])
-
-    h = tf.matmul(tf.concat(1, [x, y]), W) + b
-    return leaky_relu(h)
+    else:
+        loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            targets=ones, logits=d_real))
+        loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            targets=zeros, logits=d_fake))
+        return loss_real + loss_fake

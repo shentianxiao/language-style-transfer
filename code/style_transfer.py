@@ -27,6 +27,7 @@ class Model(object):
         max_len = args.max_seq_length
         filter_sizes = range(1, 1+args.max_filter_width)
         n_filters = args.n_filters
+        beta1, beta2 = 0.9, 0.999
 
         self.dropout = tf.placeholder(tf.float32,
             name='dropout')
@@ -138,14 +139,14 @@ class Model(object):
         theta_d0 = retrive_var(['discriminator0'])
         theta_d1 = retrive_var(['discriminator1'])
 
-        self.optimizer_all = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss, var_list=theta_eg)
-        self.optimizer_ae = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss_g, var_list=theta_eg)
-        self.optimizer_d0 = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss_d0, var_list=theta_d0)
-        self.optimizer_d1 = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss_d1, var_list=theta_d1)
+        self.optimizer_all = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss, var_list=theta_eg)
+        self.optimizer_ae = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss_g, var_list=theta_eg)
+        self.optimizer_d0 = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss_d0, var_list=theta_d0)
+        self.optimizer_d1 = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss_d1, var_list=theta_d1)
 
         self.saver = tf.train.Saver()
 
