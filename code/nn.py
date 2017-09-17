@@ -19,6 +19,16 @@ def retrive_var(scopes):
             scope=scope)
     return var
 
+def linear(inp, dim_out, scope, reuse=False):
+    dim_in = inp.get_shape().as_list()[-1]
+    with tf.variable_scope(scope) as vs:
+        if reuse:
+            vs.reuse_variables()
+
+        W = tf.get_variable('W', [dim_in, dim_out])
+        b = tf.get_variable('b', [dim_out])
+    return tf.matmul(inp, W) + b
+
 def combine(x, y, scope, reuse=False):
     dim_x = x.get_shape().as_list()[-1]
     dim_y = y.get_shape().as_list()[-1]
@@ -33,10 +43,13 @@ def combine(x, y, scope, reuse=False):
     h = tf.matmul(tf.concat(1, [x, y]), W) + b
     return leaky_relu(h)
 
-def feed_forward(inp, scope):
+def feed_forward(inp, scope, reuse=False):
     dim = inp.get_shape().as_list()[-1]
 
-    with tf.variable_scope(scope):
+    with tf.variable_scope(scope) as vs:
+        if reuse:
+            vs.reuse_variables()
+
         W1 = tf.get_variable('W1', [dim, dim])
         b1 = tf.get_variable('b1', [dim])
         W2 = tf.get_variable('W2', [dim, 1])
@@ -113,7 +126,8 @@ def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):
                 conv = tf.nn.conv2d(inp, W,
                     strides=[1, 1, 1, 1], padding='VALID')
                 h = leaky_relu(conv + b)
-                pooled = tf.reduce_max(h, reduction_indices=1)   #max pooling over time
+                # max pooling over time
+                pooled = tf.reduce_max(h, reduction_indices=1)
                 pooled = tf.reshape(pooled, [-1, n_filters])
                 outputs.append(pooled)
         outputs = tf.concat(1, outputs)

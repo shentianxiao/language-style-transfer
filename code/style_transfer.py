@@ -53,12 +53,7 @@ class Model(object):
         self.labels = tf.placeholder(tf.float32, [None],
             name='labels')
 
-        with tf.variable_scope('encoder_y'):
-            y_W = tf.get_variable('W', [1, dim_y])
-            y_b = tf.get_variable('b', [dim_y])
         labels = tf.reshape(self.labels, [-1, 1])
-        y_ori = tf.matmul(labels, y_W) + y_b
-        y_tsf = tf.matmul(1-labels, y_W) + y_b
 
         embedding = tf.get_variable('embedding', [vocab.size, dim_emb])
         with tf.variable_scope('projection'):
@@ -69,19 +64,21 @@ class Model(object):
         dec_inputs = tf.nn.embedding_lookup(embedding, self.dec_inputs)
 
         #####   auto-encoder   #####
+        init_state = tf.concat(1, [linear(labels, dim_y, scope='encoder'),
+            tf.zeros([self.batch_size, dim_z])])
         cell_e = create_cell(dim_h, n_layers, self.dropout)
-        init_state = tf.concat(1, [y_ori, tf.zeros([self.batch_size, dim_z])])
         _, z = tf.nn.dynamic_rnn(cell_e, enc_inputs,
-            initial_state=init_state, scope='encoder_z')
+            initial_state=init_state, scope='encoder')
         z = z[:, dim_y:]
+
         #cell_e = create_cell(dim_z, n_layers, self.dropout)
         #_, z = tf.nn.dynamic_rnn(cell_e, enc_inputs,
-        #    dtype=tf.float32, scope='encoder_z')
+        #    dtype=tf.float32, scope='encoder')
 
-        self.h_ori = tf.concat(1, [y_ori, z])
-        self.h_tsf = tf.concat(1, [y_tsf, z])
-        #h_ori = combine(z, y_ori, scope='generator')
-        #h_tsf = combine(z, y_tsf, scope='generator', reuse=True)
+        self.h_ori = tf.concat(1, [linear(labels, dim_y,
+            scope='generator'), z])
+        self.h_tsf = tf.concat(1, [linear(1-labels, dim_y,
+            scope='generator', reuse=True), z])
 
         cell_g = create_cell(dim_h, n_layers, self.dropout)
         g_outputs, _ = tf.nn.dynamic_rnn(cell_g, dec_inputs,
@@ -118,7 +115,6 @@ class Model(object):
         #####   discriminator   #####
         # a batch's first half consists of sentences of one style,
         # and second half of the other
-
         half = self.batch_size / 2
         zeros, ones = self.labels[:half], self.labels[half:]
         soft_h_tsf = soft_h_tsf[:, :1+self.batch_len, :]
@@ -134,7 +130,7 @@ class Model(object):
         self.loss_d = self.loss_d0 + self.loss_d1
         self.loss = self.loss_g - self.rho * self.loss_d
 
-        theta_eg = retrive_var(['encoder_y', 'encoder_z', 'generator',
+        theta_eg = retrive_var(['encoder', 'generator',
             'embedding', 'projection'])
         theta_d0 = retrive_var(['discriminator0'])
         theta_d1 = retrive_var(['discriminator1'])
@@ -233,8 +229,7 @@ if __name__ == '__main__':
 
             for epoch in range(1, 1+args.max_epochs):
                 print '--------------------epoch %d--------------------' % epoch
-                print 'learning_rate:', learning_rate, '  rho:', rho, \
-                    '  gamma:', gamma
+                print 'learning_rate:', learning_rate, '  gamma:', gamma
 
                 for batch in batches:
                     feed_dict = feed_dictionary(model, batch, rho, gamma,

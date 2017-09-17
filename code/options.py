@@ -81,7 +81,7 @@ def load_arguments():
             default=0.5)
     argparser.add_argument('--gamma_min',
             type=float,
-            default=0.0001)
+            default=0.001)
     argparser.add_argument('--max_filter_width',
             type=int,
             default=4)
