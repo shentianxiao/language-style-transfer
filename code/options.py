@@ -51,7 +51,7 @@ def load_arguments():
             default=8)
     argparser.add_argument('--dropout_keep_prob',
             type=float,
-            default=0.5)
+            default=0.7)
     argparser.add_argument('--n_layers',
             type=int,
             default=1)
