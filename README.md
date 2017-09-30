@@ -33,4 +33,4 @@ Check <code>code/options.py</code> for all running options.
 <br>
 
 ## Dependencies
-Python >= 2.7, TensorFlow 0.12.0
+Python >= 2.7, TensorFlow 1.3.0
