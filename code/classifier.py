@@ -33,7 +33,7 @@ class Model(object):
         self.probs = tf.sigmoid(self.logits)
 
         loss = tf.nn.sigmoid_cross_entropy_with_logits(
-            targets=self.y, logits=self.logits)
+            labels=self.y, logits=self.logits)
         self.loss = tf.reduce_mean(loss)
         self.optimizer = tf.train.AdamOptimizer(self.learning_rate) \
             .minimize(self.loss)
