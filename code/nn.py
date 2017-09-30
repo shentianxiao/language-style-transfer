@@ -40,7 +40,7 @@ def combine(x, y, scope, reuse=False):
         W = tf.get_variable('W', [dim_x+dim_y, dim_x])
         b = tf.get_variable('b', [dim_x])
 
-    h = tf.matmul(tf.concat(1, [x, y]), W) + b
+    h = tf.matmul(tf.concat([x, y], 1), W) + b
     return leaky_relu(h)
 
 def feed_forward(inp, scope, reuse=False):
@@ -108,7 +108,7 @@ def rnn_decode(h, inp, length, cell, loop_func, scope):
             inp, logits = loop_func(output)
             logits_seq.append(tf.expand_dims(logits, 1))
 
-    return tf.concat(1, h_seq), tf.concat(1, logits_seq)
+    return tf.concat(h_seq, 1), tf.concat(logits_seq, 1)
 
 def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):
     dim = inp.get_shape().as_list()[-1]
@@ -130,7 +130,7 @@ def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):
                 pooled = tf.reduce_max(h, reduction_indices=1)
                 pooled = tf.reshape(pooled, [-1, n_filters])
                 outputs.append(pooled)
-        outputs = tf.concat(1, outputs)
+        outputs = tf.concat(outputs, 1)
         outputs = tf.nn.dropout(outputs, dropout)
 
         with tf.variable_scope('output'):
@@ -157,7 +157,7 @@ def discriminator(x_real, x_fake, ones, zeros,
 
     else:
         loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            targets=ones, logits=d_real))
+            labels=ones, logits=d_real))
         loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            targets=zeros, logits=d_fake))
+            labels=zeros, logits=d_fake))
         return loss_real + loss_fake

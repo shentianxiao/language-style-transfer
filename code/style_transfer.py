@@ -27,6 +27,7 @@ class Model(object):
         max_len = args.max_seq_length
         filter_sizes = range(1, 1+args.max_filter_width)
         n_filters = args.n_filters
+        beta1, beta2 = 0.9, 0.999
 
         self.dropout = tf.placeholder(tf.float32,
             name='dropout')
@@ -63,8 +64,8 @@ class Model(object):
         dec_inputs = tf.nn.embedding_lookup(embedding, self.dec_inputs)
 
         #####   auto-encoder   #####
-        init_state = tf.concat(1, [linear(labels, dim_y, scope='encoder'),
-            tf.zeros([self.batch_size, dim_z])])
+        init_state = tf.concat([linear(labels, dim_y, scope='encoder'),
+            tf.zeros([self.batch_size, dim_z])], 1)
         cell_e = create_cell(dim_h, n_layers, self.dropout)
         _, z = tf.nn.dynamic_rnn(cell_e, enc_inputs,
             initial_state=init_state, scope='encoder')
@@ -74,17 +75,17 @@ class Model(object):
         #_, z = tf.nn.dynamic_rnn(cell_e, enc_inputs,
         #    dtype=tf.float32, scope='encoder')
 
-        self.h_ori = tf.concat(1, [linear(labels, dim_y,
-            scope='generator'), z])
-        self.h_tsf = tf.concat(1, [linear(1-labels, dim_y,
-            scope='generator', reuse=True), z])
+        self.h_ori = tf.concat([linear(labels, dim_y,
+            scope='generator'), z], 1)
+        self.h_tsf = tf.concat([linear(1-labels, dim_y,
+            scope='generator', reuse=True), z], 1)
 
         cell_g = create_cell(dim_h, n_layers, self.dropout)
         g_outputs, _ = tf.nn.dynamic_rnn(cell_g, dec_inputs,
             initial_state=self.h_ori, scope='generator')
 
         # attach h0 in the front
-        teach_h = tf.concat(1, [tf.expand_dims(self.h_ori, 1), g_outputs])
+        teach_h = tf.concat([tf.expand_dims(self.h_ori, 1), g_outputs], 1)
 
         g_outputs = tf.nn.dropout(g_outputs, self.dropout)
         g_outputs = tf.reshape(g_outputs, [-1, dim_h])
@@ -134,14 +135,14 @@ class Model(object):
         theta_d0 = retrive_var(['discriminator0'])
         theta_d1 = retrive_var(['discriminator1'])
 
-        self.optimizer_all = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss, var_list=theta_eg)
-        self.optimizer_ae = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss_g, var_list=theta_eg)
-        self.optimizer_d0 = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss_d0, var_list=theta_d0)
-        self.optimizer_d1 = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss_d1, var_list=theta_d1)
+        self.optimizer_all = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss, var_list=theta_eg)
+        self.optimizer_ae = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss_g, var_list=theta_eg)
+        self.optimizer_d0 = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss_d0, var_list=theta_d0)
+        self.optimizer_d1 = tf.train.AdamOptimizer(self.learning_rate,
+            beta1, beta2).minimize(self.loss_d1, var_list=theta_d1)
 
         self.saver = tf.train.Saver()
 
