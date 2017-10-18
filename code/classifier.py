@@ -112,7 +112,7 @@ if __name__ == '__main__':
         test_x, test_y = prepare(args.test)
 
     config = tf.ConfigProto()
-    #config.gpu_options.allow_growth = True
+    config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
         if args.train:

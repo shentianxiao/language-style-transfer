@@ -208,7 +208,7 @@ if __name__ == '__main__':
         test1 = load_sent(args.test + '.1')
 
     config = tf.ConfigProto()
-    #config.gpu_options.allow_growth = True
+    config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
         decoder = Decoder(sess, args, vocab, model)
