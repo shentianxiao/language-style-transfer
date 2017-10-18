@@ -13,8 +13,7 @@ from options import load_arguments
 from file_io import load_sent, write_sent
 from utils import *
 from nn import *
-#from beam_search import Decoder
-from greedy_decoding import Decoder
+import beam_search, greedy_decoding
 
 class Model(object):
 
@@ -211,7 +210,11 @@ if __name__ == '__main__':
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
-        decoder = Decoder(sess, args, vocab, model)
+
+        if args.beam > 1:
+            decoder = beam_search.Decoder(sess, args, vocab, model)
+        else:
+            decoder = greedy_decoding.Decoder(sess, args, vocab, model)
 
         if args.train:
             batches, _, _ = get_batches(train0, train1, vocab.word2id,
