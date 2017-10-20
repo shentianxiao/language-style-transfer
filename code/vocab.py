@@ -13,6 +13,7 @@ class Vocabulary(object):
             (self.size, self.dim_emb)) - 0.5
 
         if emb_file:
+            print 'Loading word vectors from', emb_file
             with open(emb_file) as f:
                 for line in f:
                     parts = line.split()

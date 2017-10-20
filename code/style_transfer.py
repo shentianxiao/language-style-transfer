@@ -54,7 +54,8 @@ class Model(object):
 
         labels = tf.reshape(self.labels, [-1, 1])
 
-        embedding = tf.get_variable('embedding', [vocab.size, dim_emb])
+        embedding = tf.get_variable('embedding',
+            initializer=vocab.embedding.astype(np.float32))
         with tf.variable_scope('projection'):
             proj_W = tf.get_variable('W', [dim_h, vocab.size])
             proj_b = tf.get_variable('b', [vocab.size])
@@ -195,7 +196,7 @@ if __name__ == '__main__':
         if not os.path.isfile(args.vocab):
             build_vocab(train0 + train1, args.vocab)
 
-    vocab = Vocabulary(args.vocab)
+    vocab = Vocabulary(args.vocab, args.embedding, args.dim_emb)
     print 'vocabulary size:', vocab.size
 
     if args.dev:
