@@ -24,7 +24,7 @@ class Model(object):
         dim_emb = args.dim_emb
         n_layers = args.n_layers
         max_len = args.max_seq_length
-        filter_sizes = range(1, 1+args.max_filter_width)
+        filter_sizes = [int(x) for x in args.filter_sizes.split(',')]
         n_filters = args.n_filters
         beta1, beta2 = 0.9, 0.999
 

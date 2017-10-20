@@ -15,7 +15,7 @@ class Model(object):
 
     def __init__(self, args, vocab):
         dim_emb = args.dim_emb
-        filter_sizes = range(1, 1+args.max_filter_width)
+        filter_sizes = [int(x) for x in args.filter_sizes.split(',')]
         n_filters = args.n_filters
 
         self.dropout = tf.placeholder(tf.float32,
