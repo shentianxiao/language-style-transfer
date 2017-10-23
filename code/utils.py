@@ -1,20 +1,12 @@
 def strip_eos(sents):
-    return [sent[:sent.index('<eos>')] if '<eos>' in sent else sent
-            for sent in sents]
+    return [sent[:sent.index('<eos>')] if '<eos>' in sent else sent for sent in sents]
 
 
 def feed_dictionary(model, batch, rho, gamma, dropout=1, learning_rate=None):
-    feed_dict = {model.dropout: dropout,
-                 model.learning_rate: learning_rate,
-                 model.rho: rho,
-                 model.gamma: gamma,
-                 model.batch_len: batch['len'],
-                 model.batch_size: batch['size'],
-                 model.enc_inputs: batch['enc_inputs'],
-                 model.dec_inputs: batch['dec_inputs'],
-                 model.targets: batch['targets'],
-                 model.weights: batch['weights'],
-                 model.labels: batch['labels']}
+    feed_dict = {model.dropout: dropout, model.learning_rate: learning_rate, model.rho: rho, model.gamma: gamma,
+                 model.batch_len: batch['len'], model.batch_size: batch['size'], model.enc_inputs: batch['enc_inputs'],
+                 model.dec_inputs: batch['dec_inputs'], model.targets: batch['targets'],
+                 model.weights: batch['weights'], model.labels: batch['labels']}
     return feed_dict
 
 
@@ -50,12 +42,7 @@ def get_batch(x, y, word2id, min_len=5):
         x_eos.append(sent_id + [eos] + padding)
         weights.append([1.0] * (l + 1) + [0.0] * (max_len - l))
 
-    return {'enc_inputs': rev_x,
-            'dec_inputs': go_x,
-            'targets': x_eos,
-            'weights': weights,
-            'labels': y,
-            'size': len(x),
+    return {'enc_inputs': rev_x, 'dec_inputs': go_x, 'targets': x_eos, 'weights': weights, 'labels': y, 'size': len(x),
             'len': max_len + 1}
 
 
@@ -78,8 +65,7 @@ def get_batches(x0, x1, word2id, batch_size):
     s = 0
     while s < n:
         t = min(s + batch_size, n)
-        batches.append(get_batch(x0[s:t] + x1[s:t],
-                                 [0] * (t - s) + [1] * (t - s), word2id))
+        batches.append(get_batch(x0[s:t] + x1[s:t], [0] * (t - s) + [1] * (t - s), word2id))
         s = t
 
     return batches, order0, order1

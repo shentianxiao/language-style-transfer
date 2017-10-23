@@ -1,7 +1,8 @@
-import numpy as np
-from numpy import linalg as LA
 import cPickle as pickle
 from collections import Counter
+
+import numpy as np
+from numpy import linalg as LA
 
 
 class Vocabulary(object):
@@ -9,8 +10,7 @@ class Vocabulary(object):
         with open(vocab_file, 'rb') as f:
             self.size, self.word2id, self.id2word = pickle.load(f)
         self.dim_emb = dim_emb
-        self.embedding = np.random.random_sample(
-            (self.size, self.dim_emb)) - 0.5
+        self.embedding = np.random.random_sample((self.size, self.dim_emb)) - 0.5
 
         if emb_file:
             print 'Loading word vectors from', emb_file

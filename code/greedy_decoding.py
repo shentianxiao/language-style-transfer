@@ -1,4 +1,5 @@
 import numpy as np
+
 from utils import strip_eos
 
 
@@ -8,13 +9,9 @@ class Decoder(object):
 
     def rewrite(self, batch):
         model = self.model
-        logits_ori, logits_tsf = self.sess.run(
-            [model.hard_logits_ori, model.hard_logits_tsf],
-            feed_dict={model.dropout: 1,
-                       model.batch_size: batch['size'],
-                       model.enc_inputs: batch['enc_inputs'],
-                       model.dec_inputs: batch['dec_inputs'],
-                       model.labels: batch['labels']})
+        logits_ori, logits_tsf = self.sess.run([model.hard_logits_ori, model.hard_logits_tsf],
+            feed_dict={model.dropout: 1, model.batch_size: batch['size'], model.enc_inputs: batch['enc_inputs'],
+                       model.dec_inputs: batch['dec_inputs'], model.labels: batch['labels']})
 
         ori = np.argmax(logits_ori, axis=2).tolist()
         ori = [[self.vocab.id2word[i] for i in sent] for sent in ori]

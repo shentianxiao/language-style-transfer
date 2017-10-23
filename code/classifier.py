@@ -1,12 +1,13 @@
 import os
-import time
 import random
+import time
+
 import tensorflow as tf
 
-from options import load_arguments
-from vocab import Vocabulary, build_vocab
 from file_io import load_sent
 from nn import cnn
+from options import load_arguments
+from vocab import Vocabulary, build_vocab
 
 
 class Model(object):
@@ -15,25 +16,20 @@ class Model(object):
         filter_sizes = [int(x) for x in args.filter_sizes.split(',')]
         n_filters = args.n_filters
 
-        self.dropout = tf.placeholder(tf.float32,
-                                      name='dropout')
-        self.learning_rate = tf.placeholder(tf.float32,
-                                            name='learning_rate')
+        self.dropout = tf.placeholder(tf.float32, name='dropout')
+        self.learning_rate = tf.placeholder(tf.float32, name='learning_rate')
         self.x = tf.placeholder(tf.int32, [None, None],  # batch_size * max_len
                                 name='x')
-        self.y = tf.placeholder(tf.float32, [None],
-                                name='y')
+        self.y = tf.placeholder(tf.float32, [None], name='y')
 
         embedding = tf.get_variable('embedding', [vocab.size, dim_emb])
         x = tf.nn.embedding_lookup(embedding, self.x)
         self.logits = cnn(x, filter_sizes, n_filters, self.dropout, 'cnn')
         self.probs = tf.sigmoid(self.logits)
 
-        loss = tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=self.y, logits=self.logits)
+        loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y, logits=self.logits)
         self.loss = tf.reduce_mean(loss)
-        self.optimizer = tf.train.AdamOptimizer(self.learning_rate) \
-            .minimize(self.loss)
+        self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
 
         self.saver = tf.train.Saver()
 
@@ -53,9 +49,7 @@ def evaluate(sess, args, vocab, model, x, y):
     probs = []
     batches = get_batches(x, y, vocab.word2id, args.batch_size)
     for batch in batches:
-        p = sess.run(model.probs,
-                     feed_dict={model.x: batch['x'],
-                                model.dropout: 1})
+        p = sess.run(model.probs, feed_dict={model.x: batch['x'], model.dropout: 1})
         probs += p.tolist()
     y_hat = [p > 0.5 for p in probs]
     same = [p == q for p, q in zip(y, y_hat)]
@@ -79,8 +73,7 @@ def get_batches(x, y, word2id, batch_size, min_len=5):
             padding = [pad] * (max_len - len(sent))
             _x.append(padding + sent_id)
 
-        batches.append({'x': _x,
-                        'y': y[s:t]})
+        batches.append({'x': _x, 'y': y[s:t]})
         s = t
 
     return batches
@@ -118,8 +111,7 @@ if __name__ == '__main__':
     with tf.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
         if args.train:
-            batches = get_batches(train_x, train_y,
-                                  vocab.word2id, args.batch_size)
+            batches = get_batches(train_x, train_y, vocab.word2id, args.batch_size)
             random.shuffle(batches)
 
             start_time = time.time()
@@ -133,8 +125,7 @@ if __name__ == '__main__':
 
                 for batch in batches:
                     step_loss, _ = sess.run([model.loss, model.optimizer],
-                                            feed_dict={model.x: batch['x'],
-                                                       model.y: batch['y'],
+                                            feed_dict={model.x: batch['x'], model.y: batch['y'],
                                                        model.dropout: args.dropout_keep_prob,
                                                        model.learning_rate: learning_rate})
 
@@ -142,8 +133,7 @@ if __name__ == '__main__':
                     loss += step_loss / args.steps_per_checkpoint
 
                     if step % args.steps_per_checkpoint == 0:
-                        print 'step %d, time %.0fs, loss %.2f' \
-                              % (step, time.time() - start_time, loss)
+                        print 'step %d, time %.0fs, loss %.2f' % (step, time.time() - start_time, loss)
                         loss = 0.0
 
                 if args.dev:

@@ -14,5 +14,4 @@ class Losses(object):
         self.d1 += d1 / self.div
 
     def output(self, s):
-        print '%s loss %.2f, g %.2f, d %.2f, adv %.2f, %.2f' \
-              % (s, self.loss, self.g, self.d, self.d0, self.d1)
+        print '%s loss %.2f, g %.2f, d %.2f, adv %.2f, %.2f' % (s, self.loss, self.g, self.d, self.d0, self.d1)

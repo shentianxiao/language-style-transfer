@@ -7,8 +7,7 @@ def leaky_relu(x, alpha=0.01):
 
 def create_cell(dim, n_layers, dropout):
     cell = tf.nn.rnn_cell.GRUCell(dim)
-    cell = tf.nn.rnn_cell.DropoutWrapper(cell,
-                                         input_keep_prob=dropout)
+    cell = tf.nn.rnn_cell.DropoutWrapper(cell, input_keep_prob=dropout)
     if n_layers > 1:
         cell = tf.nn.rnn_cell.MultiRNNCell([cell] * n_layers)
     return cell
@@ -17,8 +16,7 @@ def create_cell(dim, n_layers, dropout):
 def retrive_var(scopes):
     var = []
     for scope in scopes:
-        var += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                 scope=scope)
+        var += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
     return var
 
 
@@ -131,8 +129,7 @@ def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):
             with tf.variable_scope('conv-maxpool-%s' % size):
                 W = tf.get_variable('W', [size, dim, 1, n_filters])
                 b = tf.get_variable('b', [n_filters])
-                conv = tf.nn.conv2d(inp, W,
-                                    strides=[1, 1, 1, 1], padding='VALID')
+                conv = tf.nn.conv2d(inp, W, strides=[1, 1, 1, 1], padding='VALID')
                 h = leaky_relu(conv + b)
                 # max pooling over time
                 pooled = tf.reduce_max(h, reduction_indices=1)
@@ -149,9 +146,7 @@ def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):
     return logits
 
 
-def discriminator(x_real, x_fake, ones, zeros,
-                  filter_sizes, n_filters, dropout, scope,
-                  wgan=False, eta=10):
+def discriminator(x_real, x_fake, ones, zeros, filter_sizes, n_filters, dropout, scope, wgan=False, eta=10):
     d_real = cnn(x_real, filter_sizes, n_filters, dropout, scope)
     d_fake = cnn(x_fake, filter_sizes, n_filters, dropout, scope, reuse=True)
 
@@ -165,8 +160,6 @@ def discriminator(x_real, x_fake, ones, zeros,
         return tf.reduce_mean(loss)
 
     else:
-        loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=ones, logits=d_real))
-        loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=zeros, logits=d_fake))
+        loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=ones, logits=d_real))
+        loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=zeros, logits=d_fake))
         return loss_real + loss_fake
