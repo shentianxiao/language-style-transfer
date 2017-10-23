@@ -13,6 +13,20 @@ def create_cell(dim, n_layers, dropout):
     return cell
 
 
+def create_complex_cell(hidden_states, dropout):
+    encoder_cells = []
+    for hidden_size in hidden_states:
+        cell = tf.contrib.rnn.GRUCell(hidden_size)
+        cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=dropout)
+        encoder_cells.append(cell)
+    if len(encoder_cells) == 1:
+        return encoder_cells[0]
+    elif len(encoder_cells) > 1:
+        return tf.nn.rnn_cell.MultiRNNCell(encoder_cells)
+    else:
+        raise Exception('hidden_states is empty')
+
+
 def retrive_var(scopes):
     var = []
     for scope in scopes:
@@ -102,18 +116,17 @@ def argmax_word(dropout, proj_W, proj_b, embedding):
     return loop_func
 
 
-def rnn_decode(h, inp, length, cell, loop_func, scope):
-    h_seq, logits_seq = [], []
+def rnn_decode(h, inp, length, cell, scope):
+    h_seq, output_seq = [], []
 
     with tf.variable_scope(scope):
         tf.get_variable_scope().reuse_variables()
         for t in range(length):
             h_seq.append(tf.expand_dims(h, 1))
             output, h = cell(inp, h)
-            inp, logits = loop_func(output)
-            logits_seq.append(tf.expand_dims(logits, 1))
+            output_seq.append(tf.expand_dims(output, 1))
 
-    return tf.concat(h_seq, 1), tf.concat(logits_seq, 1)
+    return tf.concat(h_seq, 1), tf.concat(output_seq, 1)
 
 
 def cnn(inp, filter_sizes, n_filters, dropout, scope, reuse=False):

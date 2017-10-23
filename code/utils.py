@@ -37,7 +37,7 @@ def get_batch(x, y, word2id, min_len=5):
         sent_id = [word2id[w] if w in word2id else unk for w in sent]
         l = len(sent)
         padding = [pad] * (max_len - l)
-        rev_x.append(padding + sent_id[::-1])
+        rev_x.append(padding + sent_id[::-1]) # Copy the list in reverse order
         go_x.append([go] + sent_id + padding)
         x_eos.append(sent_id + [eos] + padding)
         weights.append([1.0] * (l + 1) + [0.0] * (max_len - l))

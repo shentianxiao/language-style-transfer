@@ -26,7 +26,7 @@ def load_arguments():
     argparser.add_argument('--dropout_keep_prob', type=float, default=0.5)
     argparser.add_argument('--n_layers', type=int, default=1)
     argparser.add_argument('--dim_y', type=int, default=200)
-    argparser.add_argument('--dim_z', type=int, default=500)
+    argparser.add_argument('--dim_z', type=int, default=100)
     argparser.add_argument('--dim_emb', type=int, default=100)
     argparser.add_argument('--learning_rate', type=float, default=0.0001)
     # argparser.add_argument('--learning_rate_decay',

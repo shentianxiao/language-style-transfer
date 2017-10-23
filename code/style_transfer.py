@@ -17,9 +17,9 @@ from vocab import Vocabulary, build_vocab
 
 class Model(object):
     def __init__(self, args, vocab):
-        dim_y = args.dim_y
+        # dim_y = args.dim_y
         dim_z = args.dim_z
-        dim_h = dim_y + dim_z
+        # dim_h = dim_y + dim_z
         dim_emb = args.dim_emb
         n_layers = args.n_layers
         max_len = args.max_seq_length
@@ -34,60 +34,63 @@ class Model(object):
 
         self.batch_len = tf.placeholder(tf.int32, name='batch_len')
         self.batch_size = tf.placeholder(tf.int32, name='batch_size')
-        self.enc_inputs = tf.placeholder(tf.int32, [None, None],  # size * len
-                                         name='enc_inputs')
+        self.enc_inputs = tf.placeholder(tf.int32, [None, None], name='enc_inputs')  # size * len
         self.dec_inputs = tf.placeholder(tf.int32, [None, None], name='dec_inputs')
         self.targets = tf.placeholder(tf.int32, [None, None], name='targets')
         self.weights = tf.placeholder(tf.float32, [None, None], name='weights')
         self.labels = tf.placeholder(tf.float32, [None], name='labels')
 
-        labels = tf.reshape(self.labels, [-1, 1])
+        # labels = tf.reshape(self.labels, [-1, 1])
 
         embedding = tf.get_variable('embedding', initializer=vocab.embedding.astype(np.float32))
-        with tf.variable_scope('projection'):
-            proj_W = tf.get_variable('W', [dim_h, vocab.size])
-            proj_b = tf.get_variable('b', [vocab.size])
+        # with tf.variable_scope('projection'):
+        #     proj_W = tf.get_variable('W', [dim_h, vocab.size])
+        #     proj_b = tf.get_variable('b', [vocab.size])
 
         enc_inputs = tf.nn.embedding_lookup(embedding, self.enc_inputs)
         dec_inputs = tf.nn.embedding_lookup(embedding, self.dec_inputs)
 
+        targets = tf.nn.embedding_lookup(embedding, self.targets)
+
         #####   auto-encoder   #####
-        init_state = tf.concat([linear(labels, dim_y, scope='encoder'), tf.zeros([self.batch_size, dim_z])], 1)
-        cell_e = create_cell(dim_h, n_layers, self.dropout)
+        init_state = tf.zeros([self.batch_size, dim_z])
+        cell_e = create_cell(dim_z, n_layers, self.dropout)
         _, z = tf.nn.dynamic_rnn(cell_e, enc_inputs, initial_state=init_state, scope='encoder')
-        z = z[:, dim_y:]
+        z = z
 
         # cell_e = create_cell(dim_z, n_layers, self.dropout)
         # _, z = tf.nn.dynamic_rnn(cell_e, enc_inputs,
         #    dtype=tf.float32, scope='encoder')
 
-        self.h_ori = tf.concat([linear(labels, dim_y, scope='generator'), z], 1)
-        self.h_tsf = tf.concat([linear(1 - labels, dim_y, scope='generator', reuse=True), z], 1)
+        self.h_ori = z
+        self.h_tsf = z
 
-        cell_g = create_cell(dim_h, n_layers, self.dropout)
+        cell_g = create_cell(dim_z, n_layers, self.dropout)
         g_outputs, _ = tf.nn.dynamic_rnn(cell_g, dec_inputs, initial_state=self.h_ori, scope='generator')
 
         # attach h0 in the front
         teach_h = tf.concat([tf.expand_dims(self.h_ori, 1), g_outputs], 1)
 
         g_outputs = tf.nn.dropout(g_outputs, self.dropout)
-        g_outputs = tf.reshape(g_outputs, [-1, dim_h])
-        g_logits = tf.matmul(g_outputs, proj_W) + proj_b
-
-        loss_g = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.reshape(self.targets, [-1]), logits=g_logits)
-        loss_g *= tf.reshape(self.weights, [-1])
-        self.loss_g = tf.reduce_sum(loss_g) / tf.to_float(self.batch_size)
+        # g_outputs = tf.reshape(g_outputs, [-1, dim_z])
+        # g_logits = tf.matmul(g_outputs, proj_W) + proj_b
+        # labels = tf.reshape(self.targets, [-1])
+        reduced_sum = tf.reduce_sum(tf.squared_difference(targets, g_outputs), axis=-1)
+        weighted_reduced_sum = reduced_sum * self.weights
+        # loss_g = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf.reshape(self.targets, [-1]), logits=g_logits)
+        # loss_g *= tf.reshape(self.weights, [-1])
+        self.loss_g = tf.reduce_sum(weighted_reduced_sum) / tf.to_float(self.batch_size)
 
         #####   feed-previous decoding   #####
         go = dec_inputs[:, 0, :]
-        soft_func = softsample_word(self.dropout, proj_W, proj_b, embedding, self.gamma)
-        hard_func = argmax_word(self.dropout, proj_W, proj_b, embedding)
+        # soft_func = softsample_word(self.dropout, proj_W, proj_b, embedding, self.gamma)
+        # hard_func = argmax_word(self.dropout, proj_W, proj_b, embedding)
 
-        soft_h_ori, soft_logits_ori = rnn_decode(self.h_ori, go, max_len, cell_g, soft_func, scope='generator')
-        soft_h_tsf, soft_logits_tsf = rnn_decode(self.h_tsf, go, max_len, cell_g, soft_func, scope='generator')
+        soft_h_ori, soft_logits_ori = rnn_decode(self.h_ori, go, max_len, cell_g, scope='generator')
+        soft_h_tsf, soft_logits_tsf = rnn_decode(self.h_tsf, go, max_len, cell_g, scope='generator')
 
-        hard_h_ori, self.hard_logits_ori = rnn_decode(self.h_ori, go, max_len, cell_g, hard_func, scope='generator')
-        hard_h_tsf, self.hard_logits_tsf = rnn_decode(self.h_tsf, go, max_len, cell_g, hard_func, scope='generator')
+        hard_h_ori, self.hard_logits_ori = rnn_decode(self.h_ori, go, max_len, cell_g, scope='generator')
+        hard_h_tsf, self.hard_logits_tsf = rnn_decode(self.h_tsf, go, max_len, cell_g, scope='generator')
 
         #####   discriminator   #####
         # a batch's first half consists of sentences of one style,
@@ -98,16 +101,16 @@ class Model(object):
 
         self.loss_d0 = discriminator(teach_h[:half], soft_h_tsf[half:], ones, zeros, filter_sizes, n_filters,
                                      self.dropout, scope='discriminator0')
-        self.loss_d1 = discriminator(teach_h[half:], soft_h_tsf[:half], ones, zeros, filter_sizes, n_filters,
-                                     self.dropout, scope='discriminator1')
+        # self.loss_d1 = discriminator(teach_h[half:], soft_h_tsf[:half], ones, zeros, filter_sizes, n_filters,
+        #                              self.dropout, scope='discriminator1')
 
         #####   optimizer   #####
-        self.loss_d = self.loss_d0 + self.loss_d1
+        self.loss_d = self.loss_d0  # + self.loss_d1
         self.loss = self.loss_g - self.rho * self.loss_d
 
         theta_eg = retrive_var(['encoder', 'generator', 'embedding', 'projection'])
         theta_d0 = retrive_var(['discriminator0'])
-        theta_d1 = retrive_var(['discriminator1'])
+        # theta_d1 = retrive_var(['discriminator1'])
 
         self.optimizer_all = tf.train.AdamOptimizer(self.learning_rate, beta1, beta2).minimize(self.loss,
                                                                                                var_list=theta_eg)
@@ -115,8 +118,8 @@ class Model(object):
                                                                                               var_list=theta_eg)
         self.optimizer_d0 = tf.train.AdamOptimizer(self.learning_rate, beta1, beta2).minimize(self.loss_d0,
                                                                                               var_list=theta_d0)
-        self.optimizer_d1 = tf.train.AdamOptimizer(self.learning_rate, beta1, beta2).minimize(self.loss_d1,
-                                                                                              var_list=theta_d1)
+        # self.optimizer_d1 = tf.train.AdamOptimizer(self.learning_rate, beta1, beta2).minimize(self.loss_d1,
+        #                                                                                       var_list=theta_d1)
 
         self.saver = tf.train.Saver()
 
@@ -132,10 +135,10 @@ def transfer(model, decoder, sess, args, vocab, data0, data1, out_path):
         data0_tsf += tsf[:half]
         data1_tsf += tsf[half:]
 
-        loss, loss_g, loss_d, loss_d0, loss_d1 = sess.run(
-            [model.loss, model.loss_g, model.loss_d, model.loss_d0, model.loss_d1],
+        loss, loss_g, loss_d, loss_d0 = sess.run(
+            [model.loss, model.loss_g, model.loss_d, model.loss_d0],
             feed_dict=feed_dictionary(model, batch, args.rho, args.gamma_min))
-        losses.add(loss, loss_g, loss_d, loss_d0, loss_d1)
+        losses.add(loss, loss_g, loss_d, loss_d0)
 
     n0, n1 = len(data0), len(data1)
     data0_tsf = reorder(order0, data0_tsf)[:n0]
@@ -188,6 +191,7 @@ if __name__ == '__main__':
     with tf.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
 
+        # TODO: Understand the benefit of beam search
         if args.beam > 1:
             decoder = beam_search.Decoder(sess, args, vocab, model)
         else:
@@ -214,20 +218,20 @@ if __name__ == '__main__':
                     feed_dict = feed_dictionary(model, batch, rho, gamma, dropout, learning_rate)
 
                     loss_d0, _ = sess.run([model.loss_d0, model.optimizer_d0], feed_dict=feed_dict)
-                    loss_d1, _ = sess.run([model.loss_d1, model.optimizer_d1], feed_dict=feed_dict)
+                    # loss_d1, _ = sess.run([model.loss_d1, model.optimizer_d1], feed_dict=feed_dict)
 
                     # do not back-propagate from the discriminator
                     # when it is too poor
-                    if loss_d0 < 1.2 and loss_d1 < 1.2:
+                    if loss_d0 < 1.2:# and loss_d1 < 1.2:
                         optimizer = model.optimizer_all
                     else:
                         optimizer = model.optimizer_ae
 
                     loss, loss_g, loss_d, _ = sess.run([model.loss, model.loss_g, model.loss_d, optimizer],
-                        feed_dict=feed_dict)
+                                                       feed_dict=feed_dict)
 
                     step += 1
-                    losses.add(loss, loss_g, loss_d, loss_d0, loss_d1)
+                    losses.add(loss, loss_g, loss_d, loss_d0)
 
                     if step % args.steps_per_checkpoint == 0:
                         losses.output('step %d, time %.0fs,' % (step, time.time() - start_time))

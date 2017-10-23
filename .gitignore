@@ -101,3 +101,8 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# pycharm files
+*.iml
+.idea/
+tmp/
