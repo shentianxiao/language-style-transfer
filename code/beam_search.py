@@ -3,12 +3,13 @@ from nn import *
 from utils import strip_eos
 from copy import deepcopy
 
+
 class BeamState(object):
     def __init__(self, h, inp, sent, nll):
         self.h, self.inp, self.sent, self.nll = h, inp, sent, nll
 
-class Decoder(object):
 
+class Decoder(object):
     def __init__(self, sess, args, vocab, model):
         dim_h = args.dim_y + args.dim_z
         dim_emb = args.dim_emb
@@ -41,7 +42,7 @@ class Decoder(object):
         go = self.vocab.word2id['<go>']
         batch_size = len(h)
         init_state = BeamState(h, [go] * batch_size,
-            [[] for i in range(batch_size)], [0] * batch_size)
+                               [[] for i in range(batch_size)], [0] * batch_size)
         beam = [init_state]
 
         for t in range(self.max_len):
@@ -52,9 +53,9 @@ class Decoder(object):
                     feed_dict={self.inp: state.inp, self.h: state.h})
                 for i in range(batch_size):
                     for l in range(self.beam_width):
-                        exp[i].append(BeamState(h[i], indices[i,l],
-                            state.sent[i] + [indices[i,l]],
-                            state.nll[i] - log_lh[i,l]))
+                        exp[i].append(BeamState(h[i], indices[i, l],
+                                                state.sent[i] + [indices[i, l]],
+                                                state.nll[i] - log_lh[i, l]))
 
             beam = [deepcopy(init_state) for _ in range(self.beam_width)]
             for i in range(batch_size):
@@ -69,11 +70,11 @@ class Decoder(object):
 
     def rewrite(self, batch):
         model = self.model
-        h_ori, h_tsf= self.sess.run([model.h_ori, model.h_tsf],
-            feed_dict={model.dropout: 1,
-                       model.batch_size: batch['size'],
-                       model.enc_inputs: batch['enc_inputs'],
-                       model.labels: batch['labels']})
+        h_ori, h_tsf = self.sess.run([model.h_ori, model.h_tsf],
+                                     feed_dict={model.dropout: 1,
+                                                model.batch_size: batch['size'],
+                                                model.enc_inputs: batch['enc_inputs'],
+                                                model.labels: batch['labels']})
         ori = self.decode(h_ori)
         ori = [[self.vocab.id2word[i] for i in sent] for sent in ori]
         ori = strip_eos(ori)

@@ -1,9 +1,6 @@
 import os
-import sys
 import time
-import ipdb
 import random
-import numpy as np
 import tensorflow as tf
 
 from options import load_arguments
@@ -11,21 +8,21 @@ from vocab import Vocabulary, build_vocab
 from file_io import load_sent
 from nn import cnn
 
-class Model(object):
 
+class Model(object):
     def __init__(self, args, vocab):
         dim_emb = args.dim_emb
         filter_sizes = [int(x) for x in args.filter_sizes.split(',')]
         n_filters = args.n_filters
 
         self.dropout = tf.placeholder(tf.float32,
-            name='dropout')
+                                      name='dropout')
         self.learning_rate = tf.placeholder(tf.float32,
-            name='learning_rate')
-        self.x = tf.placeholder(tf.int32, [None, None],    #batch_size * max_len
-            name='x')
+                                            name='learning_rate')
+        self.x = tf.placeholder(tf.int32, [None, None],  # batch_size * max_len
+                                name='x')
         self.y = tf.placeholder(tf.float32, [None],
-            name='y')
+                                name='y')
 
         embedding = tf.get_variable('embedding', [vocab.size, dim_emb])
         x = tf.nn.embedding_lookup(embedding, self.x)
@@ -40,6 +37,7 @@ class Model(object):
 
         self.saver = tf.train.Saver()
 
+
 def create_model(sess, args, vocab):
     model = Model(args, vocab)
     if args.load_model:
@@ -50,17 +48,19 @@ def create_model(sess, args, vocab):
         sess.run(tf.global_variables_initializer())
     return model
 
+
 def evaluate(sess, args, vocab, model, x, y):
     probs = []
     batches = get_batches(x, y, vocab.word2id, args.batch_size)
     for batch in batches:
         p = sess.run(model.probs,
-            feed_dict={model.x: batch['x'],
-                       model.dropout: 1})
+                     feed_dict={model.x: batch['x'],
+                                model.dropout: 1})
         probs += p.tolist()
     y_hat = [p > 0.5 for p in probs]
     same = [p == q for p, q in zip(y, y_hat)]
     return 100.0 * sum(same) / len(y), probs
+
 
 def get_batches(x, y, word2id, batch_size, min_len=5):
     pad = word2id['<pad>']
@@ -85,6 +85,7 @@ def get_batches(x, y, word2id, batch_size, min_len=5):
 
     return batches
 
+
 def prepare(path, suffix=''):
     data0 = load_sent(path + '.0' + suffix)
     data1 = load_sent(path + '.1' + suffix)
@@ -92,6 +93,7 @@ def prepare(path, suffix=''):
     y = [0] * len(data0) + [1] * len(data1)
     z = sorted(zip(x, y), key=lambda i: len(i[0]))
     return zip(*z)
+
 
 if __name__ == '__main__':
     args = load_arguments()
@@ -117,7 +119,7 @@ if __name__ == '__main__':
         model = create_model(sess, args, vocab)
         if args.train:
             batches = get_batches(train_x, train_y,
-                vocab.word2id, args.batch_size)
+                                  vocab.word2id, args.batch_size)
             random.shuffle(batches)
 
             start_time = time.time()
@@ -126,22 +128,22 @@ if __name__ == '__main__':
             best_dev = float('-inf')
             learning_rate = args.learning_rate
 
-            for epoch in range(1, 1+args.max_epochs):
+            for epoch in range(1, 1 + args.max_epochs):
                 print '--------------------epoch %d--------------------' % epoch
 
                 for batch in batches:
                     step_loss, _ = sess.run([model.loss, model.optimizer],
-                        feed_dict={model.x: batch['x'],
-                                   model.y: batch['y'],
-                                   model.dropout: args.dropout_keep_prob,
-                                   model.learning_rate: learning_rate})
+                                            feed_dict={model.x: batch['x'],
+                                                       model.y: batch['y'],
+                                                       model.dropout: args.dropout_keep_prob,
+                                                       model.learning_rate: learning_rate})
 
                     step += 1
                     loss += step_loss / args.steps_per_checkpoint
 
                     if step % args.steps_per_checkpoint == 0:
                         print 'step %d, time %.0fs, loss %.2f' \
-                            % (step, time.time() - start_time, loss)
+                              % (step, time.time() - start_time, loss)
                         loss = 0.0
 
                 if args.dev:

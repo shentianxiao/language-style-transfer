@@ -1,8 +1,8 @@
 import numpy as np
 from utils import strip_eos
 
-class Decoder(object):
 
+class Decoder(object):
     def __init__(self, sess, args, vocab, model):
         self.sess, self.vocab, self.model = sess, vocab, model
 

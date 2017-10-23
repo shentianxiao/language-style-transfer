@@ -1,4 +1,3 @@
-
 class Losses(object):
     def __init__(self, div):
         self.div = div
@@ -16,4 +15,4 @@ class Losses(object):
 
     def output(self, s):
         print '%s loss %.2f, g %.2f, d %.2f, adv %.2f, %.2f' \
-            % (s, self.loss, self.g, self.d, self.d0, self.d1)
+              % (s, self.loss, self.g, self.d, self.d0, self.d1)
