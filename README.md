@@ -8,6 +8,9 @@ The method learns to perform style transfer between two non-parallel corpora. Fo
 
 <br>
 
+## Spotlight Video
+[![overview](https://img.youtube.com/vi/OyjXG44j-gs/0.jpg)](https://www.youtube.com/watch?v=OyjXG44j-gs)
+
 ## Data Format
 Please name the corpora of two styles by "x.0" and "x.1" respectively, and use "x" to refer to them in options. Each file should consist of one sentence per line with tokens separated by a space.
 
