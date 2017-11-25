@@ -9,9 +9,7 @@ The method learns to perform style transfer between two non-parallel corpora. Fo
 <br>
 
 ## Spotlight Video
-<div align="center">
 [![overview](https://img.youtube.com/vi/OyjXG44j-gs/0.jpg)](https://www.youtube.com/watch?v=OyjXG44j-gs)
-</div>
 
 <br>
 
