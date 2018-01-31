@@ -89,7 +89,7 @@ def get_lm_batches(x, word2id, batch_size):
             padding = [pad] * (max_len - l)
             go_x.append([go] + sent_id + padding)
             x_eos.append(sent_id + [eos] + padding)
-            weights.append([1.0] * (l+1) + [0.0] * (max_len-l))
+            weights.append([1.0] * l + [0.0] * (max_len-l+1))
 
         batches.append({'inputs': go_x,
                         'targets': x_eos,
