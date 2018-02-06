@@ -153,11 +153,13 @@ def discriminator(x_real, x_fake, ones, zeros,
         grad = tf.gradients(d_mix, mix)[0]
         grad_norm = tf.sqrt(tf.reduce_sum(tf.square(grad), axis=[1, 2]))
         loss = d_fake-d_real + eta*tf.square(grad_norm-1)
-        return tf.reduce_mean(loss)
+        return tf.reduce_mean(loss), -tf.reduce_mean(loss)
 
     else:
-        loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-            labels=ones, logits=d_real))
-        loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+        loss_d = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=ones, logits=d_real)) + \
+                 tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             labels=zeros, logits=d_fake))
-        return loss_real + loss_fake
+        loss_g = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=ones, logits=d_fake))
+        return loss_d, loss_g

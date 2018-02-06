@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 from vocab import Vocabulary, build_vocab
-from losses import Losses
+from accumulator import Accumulator
 from options import load_arguments
 from file_io import load_sent, write_sent
 from utils import *
@@ -26,7 +26,8 @@ class Model(object):
         max_len = args.max_seq_length
         filter_sizes = [int(x) for x in args.filter_sizes.split(',')]
         n_filters = args.n_filters
-        beta1, beta2 = 0.9, 0.999
+        beta1, beta2 = 0.5, 0.999
+        grad_clip = 30.0
 
         self.dropout = tf.placeholder(tf.float32,
             name='dropout')
@@ -91,10 +92,10 @@ class Model(object):
         g_outputs = tf.reshape(g_outputs, [-1, dim_h])
         g_logits = tf.matmul(g_outputs, proj_W) + proj_b
 
-        loss_g = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        loss_rec = tf.nn.sparse_softmax_cross_entropy_with_logits(
             labels=tf.reshape(self.targets, [-1]), logits=g_logits)
-        loss_g *= tf.reshape(self.weights, [-1])
-        self.loss_g = tf.reduce_sum(loss_g) / tf.to_float(self.batch_size)
+        loss_rec *= tf.reshape(self.weights, [-1])
+        self.loss_rec = tf.reduce_sum(loss_rec) / tf.to_float(self.batch_size)
 
         #####   feed-previous decoding   #####
         go = dec_inputs[:,0,:]
@@ -119,30 +120,37 @@ class Model(object):
         zeros, ones = self.labels[:half], self.labels[half:]
         soft_h_tsf = soft_h_tsf[:, :1+self.batch_len, :]
 
-        self.loss_d0 = discriminator(teach_h[:half], soft_h_tsf[half:],
+        self.loss_d0, loss_g0 = discriminator(teach_h[:half], soft_h_tsf[half:],
             ones, zeros, filter_sizes, n_filters, self.dropout,
             scope='discriminator0')
-        self.loss_d1 = discriminator(teach_h[half:], soft_h_tsf[:half],
+        self.loss_d1, loss_g1 = discriminator(teach_h[half:], soft_h_tsf[:half],
             ones, zeros, filter_sizes, n_filters, self.dropout,
             scope='discriminator1')
 
         #####   optimizer   #####
-        self.loss_d = self.loss_d0 + self.loss_d1
-        self.loss = self.loss_g - self.rho * self.loss_d
+        self.loss_adv = loss_g0 + loss_g1
+        self.loss = self.loss_rec + self.rho * self.loss_adv
 
         theta_eg = retrive_var(['encoder', 'generator',
             'embedding', 'projection'])
         theta_d0 = retrive_var(['discriminator0'])
         theta_d1 = retrive_var(['discriminator1'])
 
-        self.optimizer_all = tf.train.AdamOptimizer(self.learning_rate,
-            beta1, beta2).minimize(self.loss, var_list=theta_eg)
-        self.optimizer_ae = tf.train.AdamOptimizer(self.learning_rate,
-            beta1, beta2).minimize(self.loss_g, var_list=theta_eg)
-        self.optimizer_d0 = tf.train.AdamOptimizer(self.learning_rate,
-            beta1, beta2).minimize(self.loss_d0, var_list=theta_d0)
-        self.optimizer_d1 = tf.train.AdamOptimizer(self.learning_rate,
-            beta1, beta2).minimize(self.loss_d1, var_list=theta_d1)
+        opt = tf.train.AdamOptimizer(self.learning_rate, beta1, beta2)
+
+        grad_rec, _ = zip(*opt.compute_gradients(self.loss_rec, theta_eg))
+        grad_adv, _ = zip(*opt.compute_gradients(self.loss_adv, theta_eg))
+        grad, _ = zip(*opt.compute_gradients(self.loss, theta_eg))
+        grad, _ = tf.clip_by_global_norm(grad, grad_clip)
+
+        self.grad_rec_norm = tf.global_norm(grad_rec)
+        self.grad_adv_norm = tf.global_norm(grad_adv)
+        self.grad_norm = tf.global_norm(grad)
+
+        self.optimize_tot = opt.apply_gradients(zip(grad, theta_eg))
+        self.optimize_rec = opt.minimize(self.loss_rec, var_list=theta_eg)
+        self.optimize_d0 = opt.minimize(self.loss_d0, var_list=theta_d0)
+        self.optimize_d1 = opt.minimize(self.loss_d1, var_list=theta_d1)
 
         self.saver = tf.train.Saver()
 
@@ -150,24 +158,31 @@ def transfer(model, decoder, sess, args, vocab, data0, data1, out_path):
     batches, order0, order1 = get_batches(data0, data1,
         vocab.word2id, args.batch_size)
 
+    data0_rec, data1_rec = [], []
     data0_tsf, data1_tsf = [], []
-    losses = Losses(len(batches))
+    losses = Accumulator(len(batches), ['loss', 'rec', 'adv', 'd0', 'd1'])
     for batch in batches:
-        ori, tsf = decoder.rewrite(batch)
+        rec, tsf = decoder.rewrite(batch)
         half = batch['size'] / 2
+        data0_rec += rec[:half]
+        data1_rec += rec[half:]
         data0_tsf += tsf[:half]
         data1_tsf += tsf[half:]
 
-        loss, loss_g, loss_d, loss_d0, loss_d1 = sess.run([model.loss,
-            model.loss_g, model.loss_d, model.loss_d0, model.loss_d1],
+        loss, loss_rec, loss_adv, loss_d0, loss_d1 = sess.run([model.loss,
+            model.loss_rec, model.loss_adv, model.loss_d0, model.loss_d1],
             feed_dict=feed_dictionary(model, batch, args.rho, args.gamma_min))
-        losses.add(loss, loss_g, loss_d, loss_d0, loss_d1)
+        losses.add([loss, loss_rec, loss_adv, loss_d0, loss_d1])
 
     n0, n1 = len(data0), len(data1)
+    data0_rec = reorder(order0, data0_rec)[:n0]
+    data1_rec = reorder(order1, data1_rec)[:n1]
     data0_tsf = reorder(order0, data0_tsf)[:n0]
     data1_tsf = reorder(order1, data1_tsf)[:n1]
 
     if out_path:
+        write_sent(data0_rec, out_path+'.0'+'.rec')
+        write_sent(data1_rec, out_path+'.1'+'.rec')
         write_sent(data0_tsf, out_path+'.0'+'.tsf')
         write_sent(data1_tsf, out_path+'.1'+'.tsf')
 
@@ -219,17 +234,21 @@ if __name__ == '__main__':
 
         if args.train:
             batches, _, _ = get_batches(train0, train1, vocab.word2id,
-                args.batch_size)
+                args.batch_size, noisy=True)
             random.shuffle(batches)
 
             start_time = time.time()
             step = 0
-            losses = Losses(args.steps_per_checkpoint)
+            losses = Accumulator(args.steps_per_checkpoint,
+                ['loss', 'rec', 'adv', 'd0', 'd1'])
             best_dev = float('inf')
             learning_rate = args.learning_rate
             rho = args.rho
             gamma = args.gamma_init
             dropout = args.dropout_keep_prob
+
+            gradients = Accumulator(args.steps_per_checkpoint,
+                ['|grad_rec|', '|grad_adv|', '|grad|'])
 
             for epoch in range(1, 1+args.max_epochs):
                 print '--------------------epoch %d--------------------' % epoch
@@ -239,36 +258,43 @@ if __name__ == '__main__':
                     feed_dict = feed_dictionary(model, batch, rho, gamma,
                         dropout, learning_rate)
 
-                    loss_d0, _ = sess.run([model.loss_d0, model.optimizer_d0],
+                    loss_d0, _ = sess.run([model.loss_d0, model.optimize_d0],
                         feed_dict=feed_dict)
-                    loss_d1, _ = sess.run([model.loss_d1, model.optimizer_d1],
+                    loss_d1, _ = sess.run([model.loss_d1, model.optimize_d1],
                         feed_dict=feed_dict)
 
                     # do not back-propagate from the discriminator
                     # when it is too poor
                     if loss_d0 < 1.2 and loss_d1 < 1.2:
-                        optimizer = model.optimizer_all
+                        optimize = model.optimize_tot
                     else:
-                        optimizer = model.optimizer_ae
+                        optimize = model.optimize_rec
 
-                    loss, loss_g, loss_d, _ = sess.run(
-                        [model.loss, model.loss_g, model.loss_d, optimizer],
+                    loss, loss_rec, loss_adv, _ = sess.run([model.loss,
+                        model.loss_rec, model.loss_adv, optimize],
                         feed_dict=feed_dict)
+                    losses.add([loss, loss_rec, loss_adv, loss_d0, loss_d1])
+
+                    grad_rec, grad_adv, grad = sess.run([model.grad_rec_norm,
+                        model.grad_adv_norm, model.grad_norm],
+                        feed_dict=feed_dict)
+                    gradients.add([grad_rec, grad_adv, grad])
 
                     step += 1
-                    losses.add(loss, loss_g, loss_d, loss_d0, loss_d1)
-
                     if step % args.steps_per_checkpoint == 0:
                         losses.output('step %d, time %.0fs,'
                             % (step, time.time() - start_time))
                         losses.clear()
 
+                        gradients.output()
+                        gradients.clear()
+
                 if args.dev:
                     dev_losses = transfer(model, decoder, sess, args, vocab,
                         dev0, dev1, args.output + '.epoch%d' % epoch)
                     dev_losses.output('dev')
-                    if dev_losses.loss < best_dev:
-                        best_dev = dev_losses.loss
+                    if dev_losses.values[0] < best_dev:
+                        best_dev = dev_losses.values[0]
                         print 'saving model...'
                         model.saver.save(sess, args.model)
 

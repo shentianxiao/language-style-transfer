@@ -32,7 +32,7 @@ def reorder(order, _x):
     return x
 
 # noise model from paper "Unsupervised Machine Translation Using Monolingual Corpora Only"
-def noise(x, unk, word_drop=0.1, k=3):
+def noise(x, unk, word_drop=0.0, k=3):
     n = len(x)
     for i in range(n):
         if random.random() < word_drop:

@@ -69,25 +69,25 @@ def load_arguments():
             default=100)
     argparser.add_argument('--learning_rate',
             type=float,
-            default=0.0001)
+            default=0.0005)
     #argparser.add_argument('--learning_rate_decay',
     #        type=float,
     #        default=0.5)
-    argparser.add_argument('--rho',                     # loss_g - rho * loss_d
+    argparser.add_argument('--rho',                 # loss_rec + rho * loss_adv
             type=float,
             default=1)
-    argparser.add_argument('--gamma_init',              # softmax(logit / gamma)
+    argparser.add_argument('--gamma_init',          # softmax(logit / gamma)
             type=float,
-            default=1)
+            default=0.1)
     argparser.add_argument('--gamma_decay',
             type=float,
-            default=0.5)
+            default=1)
     argparser.add_argument('--gamma_min',
             type=float,
-            default=0.001)
+            default=0.1)
     argparser.add_argument('--filter_sizes',
             type=str,
-            default='3,4,5')
+            default='1,2,3,4,5')
     argparser.add_argument('--n_filters',
             type=int,
             default=128)
