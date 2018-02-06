@@ -21,21 +21,21 @@ The <code>data/yelp/</code> directory contains an example Yelp review dataset.
 <br>
 
 ## Quick Start
-To train a model, first create a <code>tmp/</code> folder, then go to the <code>code/</code> folder and run the following command:
+- To train a model, first create a <code>tmp/</code> folder, then go to the <code>code/</code> folder and run the following command:
 ```bash
 python style_transfer.py --train ../data/yelp/sentiment.train --dev ../data/yelp/sentiment.dev --output ../tmp/sentiment.dev --vocab ../tmp/yelp.vocab --model ../tmp/model
 ```
 
-To test the model, run the following command:
+- To test the model, run the following command:
 ```bash
 python style_transfer.py --test ../data/yelp/sentiment.test --output ../tmp/sentiment.test --vocab ../tmp/yelp.vocab --model ../tmp/model --load_model true --beam 8
 ```
 
 The model and results will be saved in the <code>tmp/</code> folder.
 
-To download a trained model, run <code>bash download_model.sh</code>, and then run the testing command with <code>--vocab</code> and <code>--model</code> options to be <code>../model/yelp.vocab</code> and <code>../model/model</code> respectively.
+- To download a trained model, run <code>bash download_model.sh</code>, and then run the testing command with <code>--vocab</code> and <code>--model</code> options to be <code>../model/yelp.vocab</code> and <code>../model/model</code> respectively.
 
-Check <code>code/options.py</code> for all running options.
+- Check <code>code/options.py</code> for all running options.
 
 <br>
 
