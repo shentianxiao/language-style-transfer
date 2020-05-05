@@ -38,7 +38,8 @@ def load_arguments():
             default=64)
     argparser.add_argument('--max_epochs',
             type=int,
-            default=20)
+            default=1)
+            #default=20)
     argparser.add_argument('--steps_per_checkpoint',
             type=int,
             default=1000)
@@ -47,7 +48,7 @@ def load_arguments():
             default=20)
     argparser.add_argument('--max_train_size',
             type=int,
-            default=-1)
+            default=40000)
 
     argparser.add_argument('--beam',
             type=int,

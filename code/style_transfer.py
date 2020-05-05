@@ -200,15 +200,22 @@ def create_model(sess, args, vocab):
 
 if __name__ == '__main__':
     args = load_arguments()
+    #tf.disable_v2_behavior()
 
     #####   data preparation   #####
     if args.train:
+        # (1) loads in training data
+        # training data for two different "style corpora, need to have ending .0 and .1"
         train0 = load_sent(args.train + '.0', args.max_train_size)
         train1 = load_sent(args.train + '.1', args.max_train_size)
         print '#sents of training file 0:', len(train0)
         print '#sents of training file 1:', len(train1)
 
+        # checks to see if vocab is already saved
+        # if not save vocab
         if not os.path.isfile(args.vocab):
+
+            # creates dictionary + list of words in training (both corpora)
             build_vocab(train0 + train1, args.vocab)
 
     vocab = Vocabulary(args.vocab, args.embedding, args.dim_emb)
@@ -223,7 +230,7 @@ if __name__ == '__main__':
         test1 = load_sent(args.test + '.1')
 
     config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
+    #config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
 
@@ -254,7 +261,11 @@ if __name__ == '__main__':
                 print '--------------------epoch %d--------------------' % epoch
                 print 'learning_rate:', learning_rate, '  gamma:', gamma
 
+                idx = 0
                 for batch in batches:
+                    print(str(idx) + " " + str(len(batches)))
+                    idx = idx + 1
+
                     feed_dict = feed_dictionary(model, batch, rho, gamma,
                         dropout, learning_rate)
 
