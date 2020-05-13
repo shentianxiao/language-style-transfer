@@ -1,3 +1,9 @@
+# Description of Repository
+
+This repo contains all the code we used for our NLP Spring 2020 term project.  We have included code and data to be reviewed to provide a full image of the different tasks we needed 
+to pursue to achieve this goal.  Note: the majority of the code in the "code" folder of this repository was forked from https://github.com/shentianxiao/language-style-transfer . 
+There have made some slight modifications .  The rest of this readme are instruction which were originally provided by the original repository.
+
 # Language Style Transfer
 This repo contains the code and data of the following paper:
 
