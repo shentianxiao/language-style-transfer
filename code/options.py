@@ -94,9 +94,9 @@ def load_arguments():
 
     args = argparser.parse_args()
 
-    print '------------------------------------------------'
+    print('------------------------------------------------')
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(vars(args))
-    print '------------------------------------------------'
+    print('------------------------------------------------')
 
     return args

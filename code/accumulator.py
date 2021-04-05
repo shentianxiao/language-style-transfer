@@ -20,4 +20,4 @@ class Accumulator(object):
             s += '%s %.2f' % (self.names[i], self.values[i])
             if i < self.n-1:
                 s += ', '
-        print s
+        print(s)

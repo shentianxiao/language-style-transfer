@@ -26,7 +26,7 @@ def makeup(_x, n):
     return x
 
 def reorder(order, _x):
-    x = range(len(_x))
+    x = list(range(len(_x)))
     for i, a in zip(order, _x):
         x[i] = a
     return x
@@ -76,13 +76,13 @@ def get_batches(x0, x1, word2id, batch_size, noisy=False):
         x1 = makeup(x1, len(x0))
     n = len(x0)
 
-    order0 = range(n)
+    order0 = list(range(n))
     z = sorted(zip(order0, x0), key=lambda i: len(i[1]))
-    order0, x0 = zip(*z)
+    order0, x0 = list(zip(*z))
 
-    order1 = range(n)
+    order1 = list(range(n))
     z = sorted(zip(order1, x1), key=lambda i: len(i[1]))
-    order1, x1 = zip(*z)
+    order1, x1 = list(zip(*z))
 
     batches = []
     s = 0

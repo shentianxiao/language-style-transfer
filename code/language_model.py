@@ -61,10 +61,10 @@ class Model(object):
 def create_model(sess, args, vocab):
     model = Model(args, vocab)
     if args.load_model:
-        print 'Loading model from', args.model
+        print('Loading model from', args.model)
         model.saver.restore(sess, args.model)
     else:
-        print 'Creating model with fresh parameters.'
+        print('Creating model with fresh parameters.')
         sess.run(tf.global_variables_initializer())
     return model
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
             build_vocab(train, args.vocab)
 
     vocab = Vocabulary(args.vocab, args.embedding, args.dim_emb)
-    print 'vocabulary size', vocab.size
+    print('vocabulary size', vocab.size)
 
     if args.dev:
         dev = load_sent(args.dev)
@@ -147,8 +147,8 @@ if __name__ == '__main__':
             learning_rate = args.learning_rate
 
             for epoch in range(args.max_epochs):
-                print '----------------------------------------------------'
-                print 'epoch %d, learning_rate %f' % (epoch + 1, learning_rate)
+                print('----------------------------------------------------')
+                print('epoch %d, learning_rate %f' % (epoch + 1, learning_rate))
 
                 for batch in batches:
                     step_loss, _ = sess.run([model.sent_loss, model.optimizer],
@@ -163,19 +163,19 @@ if __name__ == '__main__':
                     loss += step_loss / args.steps_per_checkpoint
 
                     if step % args.steps_per_checkpoint == 0:
-                        print 'step %d, time %.0fs, loss %.2f' \
-                            % (step, time.time() - start_time, loss)
+                        print('step %d, time %.0fs, loss %.2f' \
+                            % (step, time.time() - start_time, loss))
                         loss = 0.0
 
                 if args.dev:
                     ppl = evaluate(sess, args, vocab, model, dev)
-                    print 'dev perplexity %.2f' % ppl
+                    print('dev perplexity %.2f' % ppl)
                     if ppl < best_dev:
                         best_dev = ppl
                         unchanged = 0
-                        print 'Saving model...'
+                        print('Saving model...')
                         model.saver.save(sess, args.model)
 
         if args.test:
             ppl = evaluate(sess, args, vocab, model, test)
-            print 'test perplexity %.2f' % ppl
+            print('test perplexity %.2f' % ppl)

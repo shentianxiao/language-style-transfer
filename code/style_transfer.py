@@ -3,7 +3,7 @@ import sys
 import time
 import ipdb
 import random
-import cPickle as pickle
+import pickle as pickle
 import numpy as np
 import tensorflow as tf
 
@@ -138,16 +138,16 @@ class Model(object):
 
         opt = tf.train.AdamOptimizer(self.learning_rate, beta1, beta2)
 
-        grad_rec, _ = zip(*opt.compute_gradients(self.loss_rec, theta_eg))
-        grad_adv, _ = zip(*opt.compute_gradients(self.loss_adv, theta_eg))
-        grad, _ = zip(*opt.compute_gradients(self.loss, theta_eg))
+        grad_rec, _ = list(zip(*opt.compute_gradients(self.loss_rec, theta_eg)))
+        grad_adv, _ = list(zip(*opt.compute_gradients(self.loss_adv, theta_eg)))
+        grad, _ = list(zip(*opt.compute_gradients(self.loss, theta_eg)))
         grad, _ = tf.clip_by_global_norm(grad, grad_clip)
 
         self.grad_rec_norm = tf.global_norm(grad_rec)
         self.grad_adv_norm = tf.global_norm(grad_adv)
         self.grad_norm = tf.global_norm(grad)
 
-        self.optimize_tot = opt.apply_gradients(zip(grad, theta_eg))
+        self.optimize_tot = opt.apply_gradients(list(zip(grad, theta_eg)))
         self.optimize_rec = opt.minimize(self.loss_rec, var_list=theta_eg)
         self.optimize_d0 = opt.minimize(self.loss_d0, var_list=theta_d0)
         self.optimize_d1 = opt.minimize(self.loss_d1, var_list=theta_d1)
@@ -191,10 +191,10 @@ def transfer(model, decoder, sess, args, vocab, data0, data1, out_path):
 def create_model(sess, args, vocab):
     model = Model(args, vocab)
     if args.load_model:
-        print 'Loading model from', args.model
+        print('Loading model from', args.model)
         model.saver.restore(sess, args.model)
     else:
-        print 'Creating model with fresh parameters.'
+        print('Creating model with fresh parameters.')
         sess.run(tf.global_variables_initializer())
     return model
 
@@ -205,14 +205,14 @@ if __name__ == '__main__':
     if args.train:
         train0 = load_sent(args.train + '.0', args.max_train_size)
         train1 = load_sent(args.train + '.1', args.max_train_size)
-        print '#sents of training file 0:', len(train0)
-        print '#sents of training file 1:', len(train1)
+        print('#sents of training file 0:', len(train0))
+        print('#sents of training file 1:', len(train1))
 
         if not os.path.isfile(args.vocab):
             build_vocab(train0 + train1, args.vocab)
 
     vocab = Vocabulary(args.vocab, args.embedding, args.dim_emb)
-    print 'vocabulary size:', vocab.size
+    print('vocabulary size:', vocab.size)
 
     if args.dev:
         dev0 = load_sent(args.dev + '.0')
@@ -251,8 +251,8 @@ if __name__ == '__main__':
             #    ['|grad_rec|', '|grad_adv|', '|grad|'])
 
             for epoch in range(1, 1+args.max_epochs):
-                print '--------------------epoch %d--------------------' % epoch
-                print 'learning_rate:', learning_rate, '  gamma:', gamma
+                print('--------------------epoch %d--------------------' % epoch)
+                print('learning_rate:', learning_rate, '  gamma:', gamma)
 
                 for batch in batches:
                     feed_dict = feed_dictionary(model, batch, rho, gamma,
@@ -295,7 +295,7 @@ if __name__ == '__main__':
                     dev_losses.output('dev')
                     if dev_losses.values[0] < best_dev:
                         best_dev = dev_losses.values[0]
-                        print 'saving model...'
+                        print('saving model...')
                         model.saver.save(sess, args.model)
 
                 gamma = max(args.gamma_min, gamma * args.gamma_decay)
@@ -318,5 +318,5 @@ if __name__ == '__main__':
 
                 batch = get_batch([sent], [y], vocab.word2id)
                 ori, tsf = decoder.rewrite(batch)
-                print 'original:', ' '.join(w for w in ori[0])
-                print 'transfer:', ' '.join(w for w in tsf[0])
+                print('original:', ' '.join(w for w in ori[0]))
+                print('transfer:', ' '.join(w for w in tsf[0]))

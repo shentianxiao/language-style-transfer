@@ -43,10 +43,10 @@ class Model(object):
 def create_model(sess, args, vocab):
     model = Model(args, vocab)
     if args.load_model:
-        print 'Loading model from', args.model
+        print('Loading model from', args.model)
         model.saver.restore(sess, args.model)
     else:
-        print 'Creating model with fresh parameters.'
+        print('Creating model with fresh parameters.')
         sess.run(tf.global_variables_initializer())
     return model
 
@@ -91,7 +91,7 @@ def prepare(path, suffix=''):
     x = data0 + data1
     y = [0] * len(data0) + [1] * len(data1)
     z = sorted(zip(x, y), key=lambda i: len(i[0]))
-    return zip(*z)
+    return list(zip(*z))
 
 if __name__ == '__main__':
     args = load_arguments()
@@ -103,7 +103,7 @@ if __name__ == '__main__':
             build_vocab(train_x, args.vocab)
 
     vocab = Vocabulary(args.vocab)
-    print 'vocabulary size', vocab.size
+    print('vocabulary size', vocab.size)
 
     if args.dev:
         dev_x, dev_y = prepare(args.dev)
@@ -127,7 +127,7 @@ if __name__ == '__main__':
             learning_rate = args.learning_rate
 
             for epoch in range(1, 1+args.max_epochs):
-                print '--------------------epoch %d--------------------' % epoch
+                print('--------------------epoch %d--------------------' % epoch)
 
                 for batch in batches:
                     step_loss, _ = sess.run([model.loss, model.optimizer],
@@ -140,18 +140,18 @@ if __name__ == '__main__':
                     loss += step_loss / args.steps_per_checkpoint
 
                     if step % args.steps_per_checkpoint == 0:
-                        print 'step %d, time %.0fs, loss %.2f' \
-                            % (step, time.time() - start_time, loss)
+                        print('step %d, time %.0fs, loss %.2f' \
+                            % (step, time.time() - start_time, loss))
                         loss = 0.0
 
                 if args.dev:
                     acc, _ = evaluate(sess, args, vocab, model, dev_x, dev_y)
-                    print 'dev accuracy %.2f' % acc
+                    print('dev accuracy %.2f' % acc)
                     if acc > best_dev:
                         best_dev = acc
-                        print 'Saving model...'
+                        print('Saving model...')
                         model.saver.save(sess, args.model)
 
         if args.test:
             acc, _ = evaluate(sess, args, vocab, model, test_x, test_y)
-            print 'test accuracy %.2f' % acc
+            print('test accuracy %.2f' % acc)
