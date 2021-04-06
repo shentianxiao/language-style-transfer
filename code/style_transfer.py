@@ -116,7 +116,7 @@ class Model(object):
         #####   discriminator   #####
         # a batch's first half consists of sentences of one style,
         # and second half of the other
-        half = self.batch_size / 2
+        half = tf.cast((self.batch_size / 2),tf.int32)
         zeros, ones = self.labels[:half], self.labels[half:]
         soft_h_tsf = soft_h_tsf[:, :1+self.batch_len, :]
 
