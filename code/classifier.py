@@ -18,27 +18,27 @@ class Model(object):
         filter_sizes = [int(x) for x in args.filter_sizes.split(',')]
         n_filters = args.n_filters
 
-        self.dropout = tf.placeholder(tf.float32,
+        self.dropout = tf.compat.v1.placeholder(tf.float32,
             name='dropout')
-        self.learning_rate = tf.placeholder(tf.float32,
+        self.learning_rate = tf.compat.v1.placeholder(tf.float32,
             name='learning_rate')
-        self.x = tf.placeholder(tf.int32, [None, None],    #batch_size * max_len
+        self.x = tf.compat.v1.placeholder(tf.int32, [None, None],    #batch_size * max_len
             name='x')
-        self.y = tf.placeholder(tf.float32, [None],
+        self.y = tf.compat.v1.placeholder(tf.float32, [None],
             name='y')
 
-        embedding = tf.get_variable('embedding', [vocab.size, dim_emb])
-        x = tf.nn.embedding_lookup(embedding, self.x)
+        embedding = tf.compat.v1.get_variable('embedding', [vocab.size, dim_emb])
+        x = tf.nn.embedding_lookup(params=embedding, ids=self.x)
         self.logits = cnn(x, filter_sizes, n_filters, self.dropout, 'cnn')
         self.probs = tf.sigmoid(self.logits)
 
         loss = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=self.y, logits=self.logits)
-        self.loss = tf.reduce_mean(loss)
-        self.optimizer = tf.train.AdamOptimizer(self.learning_rate) \
+        self.loss = tf.reduce_mean(input_tensor=loss)
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.learning_rate) \
             .minimize(self.loss)
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
 
 def create_model(sess, args, vocab):
     model = Model(args, vocab)
@@ -47,7 +47,7 @@ def create_model(sess, args, vocab):
         model.saver.restore(sess, args.model)
     else:
         print('Creating model with fresh parameters.')
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
     return model
 
 def evaluate(sess, args, vocab, model, x, y):
@@ -111,9 +111,9 @@ if __name__ == '__main__':
     if args.test:
         test_x, test_y = prepare(args.test)
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config) as sess:
+    with tf.compat.v1.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
         if args.train:
             batches = get_batches(train_x, train_y,

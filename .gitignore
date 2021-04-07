@@ -101,3 +101,4 @@ ENV/
 
 # mypy
 .mypy_cache/
+/tmp/model.data-00000-of-00001

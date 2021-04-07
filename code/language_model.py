@@ -19,30 +19,30 @@ class Model(object):
         dim_z = args.dim_z
         n_layers = args.n_layers
 
-        self.dropout = tf.placeholder(tf.float32,
+        self.dropout = tf.compat.v1.placeholder(tf.float32,
             name='dropout')
-        self.learning_rate = tf.placeholder(tf.float32,
+        self.learning_rate = tf.compat.v1.placeholder(tf.float32,
             name='learning_rate')
-        self.batch_size = tf.placeholder(tf.int32,
+        self.batch_size = tf.compat.v1.placeholder(tf.int32,
             name='batch_size')
-        self.inputs = tf.placeholder(tf.int32, [None, None],    #batch_size * max_len
+        self.inputs = tf.compat.v1.placeholder(tf.int32, [None, None],    #batch_size * max_len
             name='inputs')
-        self.targets = tf.placeholder(tf.int32, [None, None],
+        self.targets = tf.compat.v1.placeholder(tf.int32, [None, None],
             name='targets')
-        self.weights = tf.placeholder(tf.float32, [None, None],
+        self.weights = tf.compat.v1.placeholder(tf.float32, [None, None],
             name='weights')
 
-        embedding = tf.get_variable('embedding',
+        embedding = tf.compat.v1.get_variable('embedding',
             initializer=vocab.embedding.astype(np.float32))
-        with tf.variable_scope('projection'):
-            proj_W = tf.get_variable('W', [dim_z, vocab.size])
-            proj_b = tf.get_variable('b', [vocab.size])
+        with tf.compat.v1.variable_scope('projection'):
+            proj_W = tf.compat.v1.get_variable('W', [dim_z, vocab.size])
+            proj_b = tf.compat.v1.get_variable('b', [vocab.size])
 
-        inputs = tf.nn.embedding_lookup(embedding, self.inputs)
+        inputs = tf.nn.embedding_lookup(params=embedding, ids=self.inputs)
         cell = create_cell(dim_z, n_layers, self.dropout)
-        outputs, _ = tf.nn.dynamic_rnn(cell, inputs,
+        outputs, _ = tf.compat.v1.nn.dynamic_rnn(cell, inputs,
             dtype=tf.float32, scope='language_model')
-        outputs = tf.nn.dropout(outputs, self.dropout)
+        outputs = tf.nn.dropout(outputs, 1 - (self.dropout))
         outputs = tf.reshape(outputs, [-1, dim_z])
         self.logits = tf.matmul(outputs, proj_W) + proj_b
 
@@ -50,13 +50,13 @@ class Model(object):
             labels=tf.reshape(self.targets, [-1]),
             logits=self.logits)
         loss *= tf.reshape(self.weights, [-1])
-        self.tot_loss = tf.reduce_sum(loss)
-        self.sent_loss = self.tot_loss / tf.to_float(self.batch_size)
+        self.tot_loss = tf.reduce_sum(input_tensor=loss)
+        self.sent_loss = self.tot_loss / tf.cast(self.batch_size, dtype=tf.float32)
 
-        self.optimizer = tf.train.AdamOptimizer(self.learning_rate) \
+        self.optimizer = tf.compat.v1.train.AdamOptimizer(self.learning_rate) \
             .minimize(self.sent_loss)
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
 
 def create_model(sess, args, vocab):
     model = Model(args, vocab)
@@ -65,7 +65,7 @@ def create_model(sess, args, vocab):
         model.saver.restore(sess, args.model)
     else:
         print('Creating model with fresh parameters.')
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
     return model
 
 def get_lm_batches(x, word2id, batch_size):
@@ -132,9 +132,9 @@ if __name__ == '__main__':
     if args.test:
         test = load_sent(args.test)
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config) as sess:
+    with tf.compat.v1.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
         if args.train:
             batches = get_lm_batches(train, vocab.word2id, args.batch_size)

@@ -29,46 +29,46 @@ class Model(object):
         beta1, beta2 = 0.5, 0.999
         grad_clip = 30.0
 
-        self.dropout = tf.placeholder(tf.float32,
+        self.dropout = tf.compat.v1.placeholder(tf.float32,
             name='dropout')
-        self.learning_rate = tf.placeholder(tf.float32,
+        self.learning_rate = tf.compat.v1.placeholder(tf.float32,
             name='learning_rate')
-        self.rho = tf.placeholder(tf.float32,
+        self.rho = tf.compat.v1.placeholder(tf.float32,
             name='rho')
-        self.gamma = tf.placeholder(tf.float32,
+        self.gamma = tf.compat.v1.placeholder(tf.float32,
             name='gamma')
 
-        self.batch_len = tf.placeholder(tf.int32,
+        self.batch_len = tf.compat.v1.placeholder(tf.int32,
             name='batch_len')
-        self.batch_size = tf.placeholder(tf.int32,
+        self.batch_size = tf.compat.v1.placeholder(tf.int32,
             name='batch_size')
-        self.enc_inputs = tf.placeholder(tf.int32, [None, None],    #size * len
+        self.enc_inputs = tf.compat.v1.placeholder(tf.int32, [None, None],    #size * len
             name='enc_inputs')
-        self.dec_inputs = tf.placeholder(tf.int32, [None, None],
+        self.dec_inputs = tf.compat.v1.placeholder(tf.int32, [None, None],
             name='dec_inputs')
-        self.targets = tf.placeholder(tf.int32, [None, None],
+        self.targets = tf.compat.v1.placeholder(tf.int32, [None, None],
             name='targets')
-        self.weights = tf.placeholder(tf.float32, [None, None],
+        self.weights = tf.compat.v1.placeholder(tf.float32, [None, None],
             name='weights')
-        self.labels = tf.placeholder(tf.float32, [None],
+        self.labels = tf.compat.v1.placeholder(tf.float32, [None],
             name='labels')
 
         labels = tf.reshape(self.labels, [-1, 1])
 
-        embedding = tf.get_variable('embedding',
+        embedding = tf.compat.v1.get_variable('embedding',
             initializer=vocab.embedding.astype(np.float32))
-        with tf.variable_scope('projection'):
-            proj_W = tf.get_variable('W', [dim_h, vocab.size])
-            proj_b = tf.get_variable('b', [vocab.size])
+        with tf.compat.v1.variable_scope('projection'):
+            proj_W = tf.compat.v1.get_variable('W', [dim_h, vocab.size])
+            proj_b = tf.compat.v1.get_variable('b', [vocab.size])
 
-        enc_inputs = tf.nn.embedding_lookup(embedding, self.enc_inputs)
-        dec_inputs = tf.nn.embedding_lookup(embedding, self.dec_inputs)
+        enc_inputs = tf.nn.embedding_lookup(params=embedding, ids=self.enc_inputs)
+        dec_inputs = tf.nn.embedding_lookup(params=embedding, ids=self.dec_inputs)
 
         #####   auto-encoder   #####
         init_state = tf.concat([linear(labels, dim_y, scope='encoder'),
             tf.zeros([self.batch_size, dim_z])], 1)
         cell_e = create_cell(dim_h, n_layers, self.dropout)
-        _, z = tf.nn.dynamic_rnn(cell_e, enc_inputs,
+        _, z = tf.compat.v1.nn.dynamic_rnn(cell_e, enc_inputs,
             initial_state=init_state, scope='encoder')
         z = z[:, dim_y:]
 
@@ -82,20 +82,20 @@ class Model(object):
             scope='generator', reuse=True), z], 1)
 
         cell_g = create_cell(dim_h, n_layers, self.dropout)
-        g_outputs, _ = tf.nn.dynamic_rnn(cell_g, dec_inputs,
+        g_outputs, _ = tf.compat.v1.nn.dynamic_rnn(cell_g, dec_inputs,
             initial_state=self.h_ori, scope='generator')
 
         # attach h0 in the front
         teach_h = tf.concat([tf.expand_dims(self.h_ori, 1), g_outputs], 1)
 
-        g_outputs = tf.nn.dropout(g_outputs, self.dropout)
+        g_outputs = tf.nn.dropout(g_outputs, 1 - (self.dropout))
         g_outputs = tf.reshape(g_outputs, [-1, dim_h])
         g_logits = tf.matmul(g_outputs, proj_W) + proj_b
 
         loss_rec = tf.nn.sparse_softmax_cross_entropy_with_logits(
             labels=tf.reshape(self.targets, [-1]), logits=g_logits)
         loss_rec *= tf.reshape(self.weights, [-1])
-        self.loss_rec = tf.reduce_sum(loss_rec) / tf.to_float(self.batch_size)
+        self.loss_rec = tf.reduce_sum(input_tensor=loss_rec) / tf.cast(self.batch_size, dtype=tf.float32)
 
         #####   feed-previous decoding   #####
         go = dec_inputs[:,0,:]
@@ -116,7 +116,7 @@ class Model(object):
         #####   discriminator   #####
         # a batch's first half consists of sentences of one style,
         # and second half of the other
-        half = tf.cast((self.batch_size / 2),tf.int32)
+        half = self.batch_size // 2
         zeros, ones = self.labels[:half], self.labels[half:]
         soft_h_tsf = soft_h_tsf[:, :1+self.batch_len, :]
 
@@ -136,23 +136,23 @@ class Model(object):
         theta_d0 = retrive_var(['discriminator0'])
         theta_d1 = retrive_var(['discriminator1'])
 
-        opt = tf.train.AdamOptimizer(self.learning_rate, beta1, beta2)
+        opt = tf.compat.v1.train.AdamOptimizer(self.learning_rate, beta1, beta2)
 
         grad_rec, _ = list(zip(*opt.compute_gradients(self.loss_rec, theta_eg)))
         grad_adv, _ = list(zip(*opt.compute_gradients(self.loss_adv, theta_eg)))
         grad, _ = list(zip(*opt.compute_gradients(self.loss, theta_eg)))
         grad, _ = tf.clip_by_global_norm(grad, grad_clip)
 
-        self.grad_rec_norm = tf.global_norm(grad_rec)
-        self.grad_adv_norm = tf.global_norm(grad_adv)
-        self.grad_norm = tf.global_norm(grad)
+        self.grad_rec_norm = tf.linalg.global_norm(grad_rec)
+        self.grad_adv_norm = tf.linalg.global_norm(grad_adv)
+        self.grad_norm = tf.linalg.global_norm(grad)
 
         self.optimize_tot = opt.apply_gradients(list(zip(grad, theta_eg)))
         self.optimize_rec = opt.minimize(self.loss_rec, var_list=theta_eg)
         self.optimize_d0 = opt.minimize(self.loss_d0, var_list=theta_d0)
         self.optimize_d1 = opt.minimize(self.loss_d1, var_list=theta_d1)
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
 
 def transfer(model, decoder, sess, args, vocab, data0, data1, out_path):
     batches, order0, order1 = get_batches(data0, data1,
@@ -163,7 +163,7 @@ def transfer(model, decoder, sess, args, vocab, data0, data1, out_path):
     losses = Accumulator(len(batches), ['loss', 'rec', 'adv', 'd0', 'd1'])
     for batch in batches:
         rec, tsf = decoder.rewrite(batch)
-        half = batch['size'] / 2
+        half = batch['size'] // 2
         #data0_rec += rec[:half]
         #data1_rec += rec[half:]
         data0_tsf += tsf[:half]
@@ -195,7 +195,7 @@ def create_model(sess, args, vocab):
         model.saver.restore(sess, args.model)
     else:
         print('Creating model with fresh parameters.')
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
     return model
 
 if __name__ == '__main__':
@@ -222,9 +222,9 @@ if __name__ == '__main__':
         test0 = load_sent(args.test + '.0')
         test1 = load_sent(args.test + '.1')
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config) as sess:
+    with tf.compat.v1.Session(config=config) as sess:
         model = create_model(sess, args, vocab)
 
         if args.beam > 1:
