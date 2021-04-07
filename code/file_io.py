@@ -1,4 +1,6 @@
 from nltk import word_tokenize, sent_tokenize
+import os
+import pandas as pd
 
 def load_doc(path):
     data = []
@@ -47,3 +49,26 @@ def write_vec(vecs, path):
             for i, x in enumerate(vec):
                 f.write('%.3f' % x)
                 f.write('\n' if i == len(vec)-1 else ' ')
+
+
+def write_csv(sents_original_0, sents_transfered_0, sents_original_1, sents_transfered_1, path: str, create_dir=False):
+    columns = ["original", "transfered", "original_sentiment"]
+    output = pd.DataFrame(columns=columns)
+    rows = []
+    for original, transfer in zip(sents_original_0, sents_transfered_0):
+        original = " ".join(original)
+        transfer = " ".join(transfer)
+        rows.append([original, transfer, "negative"])
+    output = output.append(pd.DataFrame(rows, columns=columns))
+    rows = []
+    for original, transfer in zip(sents_original_1, sents_transfered_1):
+        original = " ".join(original)
+        transfer = " ".join(transfer)
+        rows.append([original, transfer, "positive"])
+    output = output.append(pd.DataFrame(rows, columns=columns))
+    if create_dir and not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+        print("Created directory {}".format(os.path.dirname(path)))
+    if not path.endswith(".csv"):
+        path = path + ".csv"
+    output.to_csv(path)
